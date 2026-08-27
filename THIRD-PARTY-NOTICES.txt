@@ -1,0 +1,26 @@
+Third-Party Notices
+===================
+
+This project includes or depends on the following third-party software. Their
+licenses apply to those components and do not replace the MIT License for the
+original source code in this repository.
+
+1. .NET and ASP.NET Core
+   Copyright Microsoft Corporation.
+   License: MIT License.
+   The .NET runtime and ASP.NET Core are required by McpVs2010.Server.
+
+2. ModelContextProtocol .NET SDK
+   Copyright the Model Context Protocol contributors.
+   License: MIT License.
+   Packages used by this project include ModelContextProtocol and
+   ModelContextProtocol.AspNetCore.
+
+3. Visual Studio 2010 SDK assemblies
+   Copyright Microsoft Corporation.
+   These assemblies are not redistributed by this project. They are resolved
+   from the user's existing Visual Studio 2010 installation at build/runtime.
+   Visual Studio and Visual Studio SDK licensing terms remain applicable.
+
+For the complete and authoritative license text, consult the license files
+distributed with each dependency and the applicable Microsoft product terms.

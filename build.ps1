@@ -198,6 +198,8 @@ Copy-Item -LiteralPath (Join-Path $projectRoot 'scripts\Install-Vsix.ps1') -Dest
 Copy-Item -LiteralPath (Join-Path $projectRoot 'deployment\Install-McpVs2010-Bridge.cmd') -Destination $deploymentOutput
 Copy-Item -LiteralPath (Join-Path $projectRoot 'deployment\Install-McpVs2010-Bridge.ps1') -Destination $deploymentOutput
 Copy-Item -LiteralPath (Join-Path $projectRoot 'deployment\README-Deployment.txt') -Destination $deploymentOutput
+Copy-Item -LiteralPath (Join-Path $projectRoot 'LICENSE') -Destination $deploymentOutput
+Copy-Item -LiteralPath (Join-Path $projectRoot 'THIRD-PARTY-NOTICES.txt') -Destination $deploymentOutput
 if (Test-Path -LiteralPath $deploymentZip) {
     Remove-Item -LiteralPath $deploymentZip -Force
 }

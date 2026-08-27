@@ -61,7 +61,7 @@ PowerShell에서 다음을 실행합니다.
 
 소스 저장소가 없는 PC에는 `artifacts\McpVs2010-Deployment-1.0.30.zip` 또는 `McpVs2010-Deployment-Latest.zip`을 전달합니다. ZIP을 압축 해제한 뒤 `Install-McpVs2010-Bridge.cmd`를 실행하면 VSIX와 사용자용 MCP 서버 파일이 설치됩니다. 배포 폴더의 `README-Deployment.txt`에 사전 조건, 자동 실행 동작과 포트 변경 방법이 정리되어 있습니다.
 
-배포 설치에는 Visual Studio 2010의 VSIX 지원과 .NET 10 런타임이 필요합니다. Qt 등 프로젝트별 외부 플러그인은 배포 패키지가 설치하거나 검사하지 않으며, 사용자가 해당 PC에서 별도로 관리합니다.
+배포 설치에는 Visual Studio 2010의 VSIX 지원과 .NET 10 런타임이 필요합니다. Qt 등 프로젝트별 외부 플러그인은 배포 패키지가 설치하거나 검사하지 않으며, 사용자가 해당 PC에서 별도로 관리합니다. 자체 소스 코드는 `LICENSE`, 외부 의존성 라이선스는 `THIRD-PARTY-NOTICES.txt`를 참고하십시오.
 
 VS2010을 모두 종료한 후 다음 스크립트를 직접 실행합니다.
 
