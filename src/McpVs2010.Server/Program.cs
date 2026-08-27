@@ -43,7 +43,7 @@ app.Use(async (context, next) =>
         (origins.Count != 1 || !IsLoopbackOrigin(origins[0])))
     {
         context.Response.StatusCode = StatusCodes.Status403Forbidden;
-        await context.Response.WriteAsync("허용되지 않은 Origin입니다.");
+        await context.Response.WriteAsync("Origin is not allowed.");
         return;
     }
 
@@ -60,7 +60,7 @@ static int LoadHttpStreamPort(int defaultPort)
     object? value = key?.GetValue(RegistryPortValue);
     if (value == null) return defaultPort;
     if (value is int port && port is >= 1 and <= 65535) return port;
-    throw new InvalidOperationException($"레지스트리 {RegistryPath}\\{RegistryPortValue} 값은 1~65535 정수여야 합니다.");
+    throw new InvalidOperationException($"Registry value {RegistryPath}\\{RegistryPortValue} must be an integer from 1 to 65535.");
 }
 
 static int? LoadParentProcessId(string[] args)
@@ -74,7 +74,7 @@ static int? LoadParentProcessId(string[] args)
             !int.TryParse(args[index + 1], out int parentProcessId) ||
             parentProcessId <= 0)
         {
-            throw new InvalidOperationException("--parent-process-id 값이 올바른 프로세스 ID가 아닙니다.");
+            throw new InvalidOperationException("--parent-process-id is not a valid process ID.");
         }
 
         return parentProcessId;

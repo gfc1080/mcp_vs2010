@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>McpVs2010.Server</AssemblyName>
     <RootNamespace>McpVs2010.Server</RootNamespace>
-    <Version>1.0.20</Version>
+    <Version>1.0.30</Version>
   </PropertyGroup>
 
   <ItemGroup>

@@ -50,13 +50,13 @@ namespace Vs2010BuildMatrix
             IRunningObjectTable runningObjectTable;
             if (GetRunningObjectTable(0, out runningObjectTable) != 0)
             {
-                throw new COMException("Running Object Table을 열 수 없습니다.");
+                throw new COMException("Cannot open the Running Object Table.");
             }
 
             IBindCtx bindContext;
             if (CreateBindCtx(0, out bindContext) != 0)
             {
-                throw new COMException("COM 바인딩 컨텍스트를 만들 수 없습니다.");
+                throw new COMException("Cannot create the COM binding context.");
             }
 
             IEnumMoniker enumerator;
@@ -83,7 +83,7 @@ namespace Vs2010BuildMatrix
                 }
             }
 
-            throw new COMException("PID " + processId + " VS2010 DTE를 Running Object Table에서 찾을 수 없습니다.");
+            throw new COMException("Cannot find the VS2010 DTE for PID " + processId + " in the Running Object Table.");
         }
     }
 }
@@ -97,7 +97,7 @@ if (-not [string]::Equals(
     [System.IO.Path]::GetFullPath($solutionPath),
     [System.IO.Path]::GetFullPath($ExpectedSolutionPath),
     [System.StringComparison]::OrdinalIgnoreCase)) {
-    throw "열린 솔루션이 요청과 다릅니다. 요청=$ExpectedSolutionPath, 실제=$solutionPath"
+    throw "The open solution does not match the requested solution. Requested=$ExpectedSolutionPath, actual=$solutionPath"
 }
 
 if ($ListBuildCommandsOnly) {
@@ -163,13 +163,13 @@ function Activate-SolutionConfiguration {
             $active = $dte.Solution.SolutionBuild.ActiveConfiguration
             if (-not [string]::Equals([string]$active.Name, $Configuration, [System.StringComparison]::OrdinalIgnoreCase) -or
                 -not [string]::Equals([string]$active.PlatformName, $Platform, [System.StringComparison]::OrdinalIgnoreCase)) {
-                throw "솔루션 구성 활성화 확인 실패: $Configuration|$Platform"
+                throw "Failed to activate the solution configuration: $Configuration|$Platform"
             }
             return
         }
     }
 
-    throw "솔루션 구성을 찾을 수 없습니다: $Configuration|$Platform. 사용 가능: $($choices -join ', ')"
+    throw "Solution configuration not found: $Configuration|$Platform. Available: $($choices -join ', ')"
 }
 
 function Wait-SolutionOperation {
@@ -205,7 +205,7 @@ function Wait-SolutionOperation {
     }
     catch {
     }
-    throw '솔루션 작업이 2시간 안에 끝나지 않아 취소를 요청했습니다.'
+    throw 'The solution operation did not finish within two hours; cancellation was requested.'
 }
 
 function Get-ErrorCount {
@@ -240,7 +240,7 @@ foreach ($configuration in $configurations) {
 
         try {
             if ((Get-BuildStateValue) -eq 2) {
-                throw 'VS2010에서 이미 솔루션 작업이 진행 중입니다.'
+                throw 'A solution operation is already running in VS2010.'
             }
 
             $dte.ExecuteCommand($operation.Command, '')

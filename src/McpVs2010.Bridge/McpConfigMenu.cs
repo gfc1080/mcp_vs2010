@@ -49,22 +49,24 @@ namespace McpVs2010.Bridge
                 _getServer = getServer; _setServer = setServer;
                 Text = "MCP server"; FormBorderStyle = FormBorderStyle.FixedDialog; StartPosition = FormStartPosition.CenterScreen;
                 AutoScaleMode = AutoScaleMode.Dpi; AutoScaleDimensions = new SizeF(96F, 96F);
-                Font = new Font("Consolas", 10F, GraphicsUnit.Point);
-                MinimizeBox = false; MaximizeBox = false; ClientSize = new Size(500, 210);
-                var urlLabel = new Label { Text = "서버 접속 URL:", AutoSize = true, Left = 15, Top = 18 };
-                _url.AutoSize = false; _url.Left = 125; _url.Top = 18; _url.Width = 275; _url.Height = 25;
-                var copy = new Button { Text = "copy", Left = 410, Top = 13, Width = 75, Height = 30 };
-                var stateLabel = new Label { Text = "서버 상태:", AutoSize = true, Left = 15, Top = 58 };
-                _status.AutoSize = true; _status.Left = 125; _status.Top = 58;
-                var portLabel = new Label { Text = "Port:", AutoSize = true, Left = 15, Top = 80 };
-                _port.Left = 125; _port.Top = 76; _port.Width = 120; _port.Height = 28;
-                var apply = new Button { Text = "Apply", Left = 260, Top = 74, Width = 85, Height = 30 };
-                _stop.Text = "STOP"; _stop.Left = 125; _stop.Top = 125; _stop.Width = 90; _stop.Height = 30; _stop.Click += StopServer;
-                _start.Text = "START"; _start.Left = 225; _start.Top = 125; _start.Width = 90; _start.Height = 30; _start.Click += StartServer;
-                var close = new Button { Text = "Close", DialogResult = DialogResult.Cancel, Left = 400, Top = 125, Width = 85, Height = 30 };
+                Font = CreateFixedFont();
+                MinimizeBox = false; MaximizeBox = false; ClientSize = new Size(500, 250);
+                var group = new GroupBox { Text = "MCP server", Left = 10, Top = 10, Width = 480, Height = 225 };
+                var urlLabel = new Label { Text = "Server URL:", AutoSize = true, Left = 15, Top = 25 };
+                _url.AutoSize = false; _url.Left = 125; _url.Top = 25; _url.Width = 275; _url.Height = 25;
+                var copy = new Button { Text = "copy", Left = 410, Top = 20, Width = 55, Height = 30 };
+                var stateLabel = new Label { Text = "Server status:", AutoSize = true, Left = 15, Top = 70 };
+                _status.AutoSize = true; _status.Left = stateLabel.Right + 12; _status.Top = 70;
+                var portLabel = new Label { Text = "Port:", AutoSize = true, Left = 15, Top = 105 };
+                _port.Left = 125; _port.Top = 101; _port.Width = 120; _port.Height = 28;
+                var apply = new Button { Text = "Apply", Left = 260, Top = 99, Width = 85, Height = 30 };
+                _stop.Text = "STOP"; _stop.Left = 125; _stop.Top = 150; _stop.Width = 90; _stop.Height = 30; _stop.Click += StopServer;
+                _start.Text = "START"; _start.Left = 225; _start.Top = 150; _start.Width = 90; _start.Height = 30; _start.Click += StartServer;
+                var close = new Button { Text = "Close", DialogResult = DialogResult.Cancel, Left = 380, Top = 190, Width = 85, Height = 30 };
                 apply.Click += ApplyPort;
                 copy.Click += CopyUrl;
-                Controls.Add(urlLabel); Controls.Add(_url); Controls.Add(copy); Controls.Add(stateLabel); Controls.Add(_status); Controls.Add(portLabel); Controls.Add(_port); Controls.Add(apply); Controls.Add(_stop); Controls.Add(_start); Controls.Add(close);
+                group.Controls.Add(urlLabel); group.Controls.Add(_url); group.Controls.Add(copy); group.Controls.Add(stateLabel); group.Controls.Add(_status); group.Controls.Add(portLabel); group.Controls.Add(_port); group.Controls.Add(apply); group.Controls.Add(_stop); group.Controls.Add(_start); group.Controls.Add(close);
+                Controls.Add(group);
                 CancelButton = close;
                 RefreshView();
             }
@@ -89,14 +91,14 @@ namespace McpVs2010.Bridge
             private void StartServer(object sender, EventArgs e)
             {
                 try { if (_getServer() == null || !_getServer().IsRunning) _setServer(McpServerProcess.Start()); RefreshView(); }
-                catch (Exception ex) { MessageBox.Show("MCP 서버 시작에 실패했습니다.\r\n" + ex.Message, "MCP server", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+                catch (Exception ex) { MessageBox.Show("Failed to start the MCP server.\r\n" + ex.Message, "MCP server", MessageBoxButtons.OK, MessageBoxIcon.Error); }
             }
 
             private void ApplyPort(object sender, EventArgs e)
             {
                 int port;
                 if (!int.TryParse(_port.Text.Trim(), out port) || port < 1 || port > 65535)
-                { MessageBox.Show("Port는 1~65535 사이의 정수여야 합니다.", "MCP server", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+                { MessageBox.Show("Port must be an integer from 1 to 65535.", "MCP server", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
                 try
                 {
                     int oldPort = ReadPort();
@@ -105,11 +107,17 @@ namespace McpVs2010.Bridge
                     if (server != null && server.IsRunning && oldPort != port) { server.Stop(); _setServer(McpServerProcess.Start()); }
                     RefreshView();
                 }
-                catch (Exception ex) { MessageBox.Show("Port 적용에 실패했습니다.\r\n" + ex.Message, "MCP server", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+                catch (Exception ex) { MessageBox.Show("Failed to apply the port.\r\n" + ex.Message, "MCP server", MessageBoxButtons.OK, MessageBoxIcon.Error); }
             }
 
             private static int ReadPort()
             { using (var key = RegistryKey.OpenBaseKey(RegistryHive.CurrentUser, RegistryView.Registry32).OpenSubKey(RegistryPath, false)) { object value = key == null ? null : key.GetValue(RegistryValue); int port = value is int ? (int)value : 0; return port > 0 && port <= 65535 ? port : 3010; } }
+
+            private static Font CreateFixedFont()
+            {
+                try { return new Font("Fixedsys", 10F, GraphicsUnit.Point); }
+                catch { return new Font("Consolas", 10F, GraphicsUnit.Point); }
+            }
         }
     }
 }

@@ -14,7 +14,7 @@ if ([string]::IsNullOrWhiteSpace($ServerPath)) {
     $serverVersionNode = $serverProject.SelectSingleNode(
         '/*[local-name()="Project"]/*[local-name()="PropertyGroup"]/*[local-name()="Version"]')
     if ($null -eq $serverVersionNode -or [string]::IsNullOrWhiteSpace($serverVersionNode.InnerText)) {
-        throw "MCP 서버 프로젝트에서 버전을 읽을 수 없습니다: $serverProjectPath"
+        throw "Cannot read the MCP server project version: $serverProjectPath"
     }
 
     $server = Join-Path $projectRoot (
@@ -30,7 +30,7 @@ if ([string]::IsNullOrWhiteSpace($VsixPath)) {
     $versionNode = $manifest.SelectSingleNode(
         '/*[local-name()="Vsix"]/*[local-name()="Identifier"]/*[local-name()="Version"]')
     if ($null -eq $versionNode -or [string]::IsNullOrWhiteSpace($versionNode.InnerText)) {
-        throw "VSIX 매니페스트에서 버전을 읽을 수 없습니다: $manifestPath"
+        throw "Cannot read the VSIX manifest version: $manifestPath"
     }
 
     $vsix = Join-Path $projectRoot (
@@ -41,10 +41,10 @@ else {
 }
 
 if (-not (Test-Path -LiteralPath $server)) {
-    throw "MCP 서버 산출물이 없습니다: $server"
+    throw "MCP server artifact is missing: $server"
 }
 if (-not (Test-Path -LiteralPath $vsix)) {
-    throw "VSIX 산출물이 없습니다: $vsix"
+    throw "VSIX artifact is missing: $vsix"
 }
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -59,7 +59,7 @@ try {
     $entryNames = @($archive.Entries | ForEach-Object FullName)
     foreach ($entry in $requiredEntries) {
         if ($entryNames -notcontains $entry) {
-            throw "VSIX 필수 항목이 없습니다: $entry"
+        throw "Required VSIX entry is missing: $entry"
         }
     }
 
@@ -83,10 +83,10 @@ try {
     $packageVersionNode = $packageManifest.SelectSingleNode(
         '/*[local-name()="Vsix"]/*[local-name()="Identifier"]/*[local-name()="Version"]')
     if ($null -eq $packageIdentifier -or $packageIdentifier.Id -ne 'McpVs2010.Bridge') {
-        throw "VSIX 업데이트용 확장 ID가 고정되어 있지 않습니다: $($packageIdentifier.Id)"
+        throw "VSIX update extension ID is not fixed: $($packageIdentifier.Id)"
     }
     if ($null -eq $packageVersionNode) {
-        throw 'VSIX 패키지 버전이 없습니다.'
+        throw 'VSIX package version is missing.'
     }
 
     $packageVersion = [Version]$packageVersionNode.InnerText.Trim()
@@ -114,7 +114,7 @@ try {
     if (-not $pkgdefText.Contains(
         "McpVs2010.Bridge, Version=$packageAssemblyVersion",
         [System.StringComparison]::Ordinal)) {
-        throw "VSIX 매니페스트와 pkgdef 어셈블리 버전이 일치하지 않습니다: $packageVersion"
+        throw "VSIX manifest and pkgdef assembly versions do not match: $packageVersion"
     }
 }
 finally {
@@ -138,7 +138,7 @@ $tempPrefix = $tempBase.TrimEnd([System.IO.Path]::DirectorySeparatorChar) +
 $testServerRoot = [System.IO.Path]::GetFullPath((Join-Path $tempBase (
     'mcp-vs2010-config-smoke-{0}' -f [Guid]::NewGuid().ToString('N'))))
 if (-not $testServerRoot.StartsWith($tempPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
-    throw "설정 테스트 폴더가 임시 폴더 밖입니다: $testServerRoot"
+    throw "Configuration test folder is outside the temporary folder: $testServerRoot"
 }
 
 New-Item -ItemType Directory -Path $testServerRoot | Out-Null
@@ -208,7 +208,7 @@ function ConvertFrom-McpResponse {
         }
     }
 
-    throw "MCP 응답에서 ID $ExpectedId JSON-RPC 메시지를 찾을 수 없습니다: $Text"
+    throw "Expected JSON-RPC message ID $ExpectedId was not found in the MCP response: $Text"
 }
 
 function Invoke-McpRequest {
@@ -244,7 +244,7 @@ function Invoke-McpRequest {
         try {
             $responseText = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
             if (-not $response.IsSuccessStatusCode) {
-                throw "MCP HTTP 요청 실패: $([int]$response.StatusCode) $($response.ReasonPhrase) $responseText"
+                throw "MCP HTTP request failed: $([int]$response.StatusCode) $($response.ReasonPhrase) $responseText"
             }
 
             return ConvertFrom-McpResponse -Text $responseText -ExpectedId $Id
@@ -264,7 +264,7 @@ try {
     for ($attempt = 0; $attempt -lt 20; $attempt++) {
         if ($process.HasExited) {
             $stderr = $process.StandardError.ReadToEnd()
-            throw "MCP 서버가 시작 중 종료되었습니다($($process.ExitCode)): $stderr"
+            throw "MCP server exited during startup ($($process.ExitCode)): $stderr"
         }
 
         try {
@@ -281,7 +281,7 @@ try {
     }
 
     if ($null -eq $tools) {
-        throw "MCP HTTP 서버 시작 또는 tools/list 호출에 실패했습니다: $lastStartupError"
+            throw "MCP HTTP server startup or tools/list failed: $lastStartupError"
     }
 
     $actualNames = @($tools.result.tools | ForEach-Object name)
@@ -296,32 +296,32 @@ try {
     )
     foreach ($name in $expectedNames) {
         if ($actualNames -notcontains $name) {
-            throw "MCP 도구가 노출되지 않았습니다: $name"
+            throw "MCP tool was not exposed: $name"
         }
     }
 
     $solutionTool = @($tools.result.tools | Where-Object name -eq 'build_vs2010_solution')[0]
     $solutionProperties = @($solutionTool.inputSchema.properties.PSObject.Properties.Name)
     if ($solutionProperties -notcontains 'operation') {
-        throw 'build_vs2010_solution 입력 스키마에 operation이 없습니다.'
+        throw 'build_vs2010_solution input schema is missing operation.'
     }
 
     $projectTool = @($tools.result.tools | Where-Object name -eq 'build_vs2010_project')[0]
     $projectProperties = @($projectTool.inputSchema.properties.PSObject.Properties.Name)
     foreach ($propertyName in @('project', 'operation', 'processId', 'configuration', 'platform')) {
         if ($projectProperties -notcontains $propertyName) {
-            throw "build_vs2010_project 입력 스키마에 $propertyName 이(가) 없습니다."
+        throw "build_vs2010_project input schema is missing $propertyName."
         }
     }
     if (@($projectTool.inputSchema.required) -notcontains 'project') {
-        throw 'build_vs2010_project 입력 스키마에서 project가 필수가 아닙니다.'
+        throw 'project must be required in the build_vs2010_project input schema.'
     }
 
     $openRecentTool = @($tools.result.tools | Where-Object name -eq 'open_vs2010_recent_solution')[0]
     $openRecentProperties = @($openRecentTool.inputSchema.properties.PSObject.Properties.Name)
     foreach ($propertyName in @('position', 'processId', 'saveCurrentSolution')) {
         if ($openRecentProperties -notcontains $propertyName) {
-            throw "open_vs2010_recent_solution 입력 스키마에 $propertyName 이(가) 없습니다."
+        throw "open_vs2010_recent_solution input schema is missing $propertyName."
         }
     }
 
@@ -331,7 +331,7 @@ try {
         -Name 'list_vs2010_instances' `
         -Json '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list_vs2010_instances","arguments":{},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"mcp-vs2010-smoke","version":"1.0.11"},"io.modelcontextprotocol/clientCapabilities":{}}}}'
     if ($call.id -ne 2 -or $call.result.isError) {
-        throw 'list_vs2010_instances 스모크 호출이 실패했습니다.'
+        throw 'list_vs2010_instances smoke call failed.'
     }
 
     $recentCall = Invoke-McpRequest `
@@ -340,13 +340,13 @@ try {
         -Name 'list_vs2010_recent_projects' `
         -Json '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_vs2010_recent_projects","arguments":{},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"mcp-vs2010-smoke","version":"1.0.11"},"io.modelcontextprotocol/clientCapabilities":{}}}}'
     if ($recentCall.id -ne 3 -or $recentCall.result.isError) {
-        throw 'list_vs2010_recent_projects 스모크 호출이 실패했습니다.'
+        throw 'list_vs2010_recent_projects smoke call failed.'
     }
     $recentResult = $recentCall.result.content[0].text | ConvertFrom-Json
     if ($recentResult.RegistryView -ne 'Registry32' -or
         $recentResult.RegistryPath -ne 'HKCU\Software\Microsoft\VisualStudio\10.0\ProjectMRUList' -or
         $null -eq $recentResult.Items) {
-        throw 'list_vs2010_recent_projects 결과 구조가 올바르지 않습니다.'
+        throw 'list_vs2010_recent_projects result structure is invalid.'
     }
 
     $legacyRequest = [System.Net.Http.HttpRequestMessage]::new(
@@ -360,7 +360,7 @@ try {
         $legacyResponse = $httpClient.SendAsync($legacyRequest).GetAwaiter().GetResult()
         try {
             if ([int]$legacyResponse.StatusCode -ne 404) {
-                throw "기존 /mcp 경로 비활성화 검사 실패: $([int]$legacyResponse.StatusCode)"
+                throw "Legacy /mcp path check failed: $([int]$legacyResponse.StatusCode)"
             }
         }
         finally {
@@ -383,7 +383,7 @@ try {
         $originResponse = $httpClient.SendAsync($originRequest).GetAwaiter().GetResult()
         try {
             if ([int]$originResponse.StatusCode -ne 403) {
-                throw "외부 Origin 차단 검사 실패: $([int]$originResponse.StatusCode)"
+                throw "External Origin rejection check failed: $([int]$originResponse.StatusCode)"
             }
         }
         finally {
@@ -394,17 +394,17 @@ try {
         $originRequest.Dispose()
     }
 
-    Write-Output 'VSIX 구조 검사: 성공'
-    Write-Output "VSIX 업데이트 ID/버전 검사: 성공 (McpVs2010.Bridge $packageVersion)"
-    Write-Output "MCP Streamable HTTP: 성공 ($mcpUrl)"
-    Write-Output "Windows 레지스트리 포트 적용: 성공 ($port)"
-    Write-Output ('MCP 도구: ' + ($actualNames -join ', '))
-    Write-Output 'Project Only 도구 스키마: 성공'
-    Write-Output '최근 솔루션 열기 도구 스키마: 성공'
-    Write-Output 'list_vs2010_instances 호출: 성공'
-    Write-Output 'list_vs2010_recent_projects 호출: 성공'
-    Write-Output '기존 /mcp 경로 비활성화: 성공'
-    Write-Output '외부 Origin 차단: 성공'
+    Write-Output 'VSIX structure: PASS'
+    Write-Output "VSIX update ID/version: PASS (McpVs2010.Bridge $packageVersion)"
+    Write-Output "MCP Streamable HTTP: PASS ($mcpUrl)"
+    Write-Output "Windows registry port: PASS ($port)"
+    Write-Output ('MCP tools: ' + ($actualNames -join ', '))
+    Write-Output 'Project Only tool schema: PASS'
+    Write-Output 'Open recent solution schema: PASS'
+    Write-Output 'list_vs2010_instances call: PASS'
+    Write-Output 'list_vs2010_recent_projects call: PASS'
+    Write-Output 'Legacy /mcp path disabled: PASS'
+    Write-Output 'External Origin rejected: PASS'
 }
 finally {
     $httpClient.Dispose()
@@ -420,7 +420,7 @@ finally {
     if (Test-Path -LiteralPath $testServerRoot) {
         $resolvedTestRoot = [System.IO.Path]::GetFullPath($testServerRoot)
         if (-not $resolvedTestRoot.StartsWith($tempPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
-            throw "삭제할 설정 테스트 폴더가 임시 폴더 밖입니다: $resolvedTestRoot"
+            throw "Configuration test folder to delete is outside the temporary folder: $resolvedTestRoot"
         }
         Remove-Item -LiteralPath $resolvedTestRoot -Recurse -Force
     }

@@ -34,7 +34,25 @@ namespace McpVs2010.Bridge
 
             string installedServerDirectory = Path.Combine(assemblyDirectory, "server");
             string serverDirectory = MaterializeServerDirectory(installedServerDirectory);
+            string localServerDirectory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "McpVs2010");
+            if (File.Exists(Path.Combine(localServerDirectory, "McpVs2010.Server.exe")) ||
+                File.Exists(Path.Combine(localServerDirectory, "McpVs2010.Server.dll")))
+            {
+                serverDirectory = MaterializeServerDirectory(localServerDirectory);
+            }
             string serverPath = Path.Combine(serverDirectory, "McpVs2010.Server.exe");
+            string serverDllPath = Path.Combine(serverDirectory, "McpVs2010.Server.dll");
+            if (!File.Exists(serverPath) && !File.Exists(serverDllPath))
+            {
+                string discoveredDirectory = FindInstalledServerDirectory(assemblyDirectory);
+                if (!string.IsNullOrEmpty(discoveredDirectory))
+                {
+                    serverDirectory = MaterializeServerDirectory(discoveredDirectory);
+                    serverPath = Path.Combine(serverDirectory, "McpVs2010.Server.exe");
+                    serverDllPath = Path.Combine(serverDirectory, "McpVs2010.Server.dll");
+                }
+            }
             if (!File.Exists(serverPath))
             {
                 if (!string.IsNullOrEmpty(_lastServerDirectory) && File.Exists(Path.Combine(_lastServerDirectory, "McpVs2010.Server.exe")))
@@ -49,16 +67,18 @@ namespace McpVs2010.Bridge
                     if (!string.IsNullOrEmpty(cached)) serverDirectory = cached;
                 }
                 serverPath = Path.Combine(serverDirectory, "McpVs2010.Server.exe");
-                if (!File.Exists(serverPath)) throw new FileNotFoundException("VSIX에 포함된 MCP VS2010 서버 실행 파일을 찾을 수 없습니다.", serverPath);
+                serverDllPath = Path.Combine(serverDirectory, "McpVs2010.Server.dll");
+                if (!File.Exists(serverPath) && !File.Exists(serverDllPath)) throw new FileNotFoundException("VSIX에 포함된 MCP VS2010 서버 파일을 찾을 수 없습니다.", serverPath);
             }
             _lastServerDirectory = serverDirectory;
 
             int parentProcessId = Process.GetCurrentProcess().Id;
+            bool useDotnetHost = !File.Exists(serverPath);
             ProcessStartInfo startInfo = new ProcessStartInfo
             {
-                FileName = serverPath,
+                FileName = useDotnetHost ? FindDotnetHost() : serverPath,
                 WorkingDirectory = serverDirectory,
-                Arguments = "--parent-process-id " + parentProcessId,
+                Arguments = (useDotnetHost ? "\"" + serverDllPath + "\" " : string.Empty) + "--parent-process-id " + parentProcessId,
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 WindowStyle = ProcessWindowStyle.Hidden
@@ -71,13 +91,36 @@ namespace McpVs2010.Bridge
             return new McpServerProcess(process);
         }
 
+        private static string FindInstalledServerDirectory(string assemblyDirectory)
+        {
+            try
+            {
+                string[] candidates = Directory.GetFiles(assemblyDirectory, "McpVs2010.Server.dll", SearchOption.AllDirectories);
+                if (candidates.Length == 0)
+                    candidates = Directory.GetFiles(assemblyDirectory, "McpVs2010.Server.exe.payload.pdb", SearchOption.AllDirectories);
+                return candidates.Length == 0 ? null : Path.GetDirectoryName(candidates[0]);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string FindDotnetHost()
+        {
+            string host = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", "dotnet.exe");
+            if (File.Exists(host)) return host;
+            throw new FileNotFoundException("MCP 서버 실행 파일과 .NET 호스트를 모두 찾을 수 없습니다.", host);
+        }
+
         private static string MaterializeServerDirectory(string installedDirectory)
         {
             string installedExecutable = Path.Combine(installedDirectory, "McpVs2010.Server.exe");
             string payloadExecutable = Path.Combine(installedDirectory, "McpVs2010.Server.exe.payload.pdb");
             if (File.Exists(installedExecutable))
                 return installedDirectory;
-            if (!File.Exists(payloadExecutable))
+            string installedDll = Path.Combine(installedDirectory, "McpVs2010.Server.dll");
+            if (!File.Exists(payloadExecutable) && !File.Exists(installedDll))
                 return installedDirectory;
 
             string version = Assembly.GetExecutingAssembly().GetName().Version == null

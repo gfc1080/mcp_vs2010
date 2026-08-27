@@ -3,7 +3,7 @@
   <Identifier Id="McpVs2010.Bridge">
     <Name>MCP VS2010 Bridge</Name>
     <Author>YoungSub Yoon</Author>
-    <Version>1.0.20</Version>
+    <Version>1.0.30</Version>
     <Description>Visual Studio 2010 solution and C++ Project Only build bridge for an external MCP server. Contact: bonunnal@gmail.com</Description>
     <Locale>1042</Locale>
     <SupportedProducts>

@@ -17,6 +17,14 @@ PowerShell에서 다음을 실행합니다.
 .\build.ps1
 ```
 
+빌드 산출물만 정리하려면 다음을 실행합니다.
+
+```powershell
+.\clean.ps1
+```
+
+소스 프로젝트의 `bin`/`obj`까지 정리하려면 `-AllBuildOutputs`를 사용합니다. 실제 삭제 없이 대상만 확인하려면 `-WhatIf`를 추가합니다.
+
 현재 게시된 MCP 서버가 실행 중이라 서버 파일을 유지한 채 VSIX만 다시 만들려면 다음을 사용합니다.
 
 ```powershell

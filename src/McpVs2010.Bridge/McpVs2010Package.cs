@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using EnvDTE80;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
+using System.Windows.Forms;
 
 namespace McpVs2010.Bridge
 {
@@ -14,6 +15,7 @@ namespace McpVs2010.Bridge
         private BridgeHost _host;
         private McpServerProcess _serverProcess;
         private McpConfigMenu _configMenu;
+        private Timer _menuTimer;
 
         protected override void Initialize()
         {
@@ -48,14 +50,20 @@ namespace McpVs2010.Bridge
 
             _host = new BridgeHost(dte, solutionService, shellService);
             _host.Start();
-            try
+            _menuTimer = new Timer { Interval = 2000 };
+            _menuTimer.Tick += delegate
             {
-                _configMenu = McpConfigMenu.Create(dte, () => _serverProcess, server => _serverProcess = server);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Trace.WriteLine("MCP Config 메뉴 생성 실패: " + ex);
-            }
+                try
+                {
+                    if (_configMenu == null)
+                    {
+                        _configMenu = McpConfigMenu.Create(dte, () => _serverProcess, server => _serverProcess = server);
+                        _menuTimer.Stop();
+                    }
+                }
+                catch (Exception ex) { System.Diagnostics.Trace.WriteLine("MCP server menu creation failed: " + ex); }
+            };
+            _menuTimer.Start();
         }
 
         protected override void Dispose(bool disposing)
@@ -76,6 +84,12 @@ namespace McpVs2010.Bridge
             {
                 _configMenu.Dispose();
                 _configMenu = null;
+            }
+            if (disposing && _menuTimer != null)
+            {
+                _menuTimer.Stop();
+                _menuTimer.Dispose();
+                _menuTimer = null;
             }
 
             base.Dispose(disposing);
