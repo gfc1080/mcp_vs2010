@@ -1,5 +1,7 @@
 # MCP VS2010
 
+### * 이 프로젝트는 Codex를 사용하여 만들었습니다. *
+
 Visual Studio 2010 내부의 실제 DTE 빌드를 Codex에서 호출하기 위한 Windows 전용 MCP 서버입니다.
 
 구성은 두 프로세스로 분리됩니다.
