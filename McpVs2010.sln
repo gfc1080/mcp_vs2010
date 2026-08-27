@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.9.12112.369
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "McpVs2010.Server", "src\McpVs2010.Server\McpVs2010.Server.csproj", "{4C10EAE6-E43A-4495-915C-A9F78446AA36}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "McpVs2010.Bridge", "src\McpVs2010.Bridge\McpVs2010.Bridge.csproj", "{2CF4B245-E531-4FA7-B40F-02E2E40D296E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4C10EAE6-E43A-4495-915C-A9F78446AA36}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4C10EAE6-E43A-4495-915C-A9F78446AA36}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4C10EAE6-E43A-4495-915C-A9F78446AA36}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4C10EAE6-E43A-4495-915C-A9F78446AA36}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2CF4B245-E531-4FA7-B40F-02E2E40D296E}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{2CF4B245-E531-4FA7-B40F-02E2E40D296E}.Debug|Any CPU.Build.0 = Debug|x86
+		{2CF4B245-E531-4FA7-B40F-02E2E40D296E}.Release|Any CPU.ActiveCfg = Release|x86
+		{2CF4B245-E531-4FA7-B40F-02E2E40D296E}.Release|Any CPU.Build.0 = Release|x86
+	EndGlobalSection
+EndGlobal

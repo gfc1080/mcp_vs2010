@@ -1,0 +1,135 @@
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Reflection;
+using System.Linq;
+
+namespace McpVs2010.Bridge
+{
+    internal sealed class McpServerProcess : IDisposable
+    {
+        private readonly Process _process;
+        private static string _lastServerDirectory;
+        private bool _disposed;
+
+        private McpServerProcess(Process process)
+        {
+            _process = process;
+        }
+
+        public bool IsRunning
+        {
+            get
+            {
+                try { return !_process.HasExited; }
+                catch { return false; }
+            }
+        }
+
+        public static McpServerProcess Start()
+        {
+            string assemblyDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            if (string.IsNullOrEmpty(assemblyDirectory))
+                throw new InvalidOperationException("MCP VS2010 Bridge 설치 폴더를 확인할 수 없습니다.");
+
+            string installedServerDirectory = Path.Combine(assemblyDirectory, "server");
+            string serverDirectory = MaterializeServerDirectory(installedServerDirectory);
+            string serverPath = Path.Combine(serverDirectory, "McpVs2010.Server.exe");
+            if (!File.Exists(serverPath))
+            {
+                if (!string.IsNullOrEmpty(_lastServerDirectory) && File.Exists(Path.Combine(_lastServerDirectory, "McpVs2010.Server.exe")))
+                    serverDirectory = _lastServerDirectory;
+                else
+                {
+                    string cacheRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "McpVs2010", "server-cache");
+                    string versionPrefix = Assembly.GetExecutingAssembly().GetName().Version + "-";
+                    string cached = Directory.Exists(cacheRoot) ? Directory.GetDirectories(cacheRoot, versionPrefix + "*", SearchOption.TopDirectoryOnly)
+                        .Where(path => File.Exists(Path.Combine(path, "McpVs2010.Server.exe")))
+                        .OrderByDescending(path => Directory.GetLastWriteTimeUtc(path)).FirstOrDefault() : null;
+                    if (!string.IsNullOrEmpty(cached)) serverDirectory = cached;
+                }
+                serverPath = Path.Combine(serverDirectory, "McpVs2010.Server.exe");
+                if (!File.Exists(serverPath)) throw new FileNotFoundException("VSIX에 포함된 MCP VS2010 서버 실행 파일을 찾을 수 없습니다.", serverPath);
+            }
+            _lastServerDirectory = serverDirectory;
+
+            int parentProcessId = Process.GetCurrentProcess().Id;
+            ProcessStartInfo startInfo = new ProcessStartInfo
+            {
+                FileName = serverPath,
+                WorkingDirectory = serverDirectory,
+                Arguments = "--parent-process-id " + parentProcessId,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden
+            };
+
+            Process process = Process.Start(startInfo);
+            if (process == null)
+                throw new InvalidOperationException("MCP VS2010 서버 프로세스를 시작하지 못했습니다.");
+
+            return new McpServerProcess(process);
+        }
+
+        private static string MaterializeServerDirectory(string installedDirectory)
+        {
+            string installedExecutable = Path.Combine(installedDirectory, "McpVs2010.Server.exe");
+            string payloadExecutable = Path.Combine(installedDirectory, "McpVs2010.Server.exe.payload.pdb");
+            if (File.Exists(installedExecutable))
+                return installedDirectory;
+            if (!File.Exists(payloadExecutable))
+                return installedDirectory;
+
+            string version = Assembly.GetExecutingAssembly().GetName().Version == null
+                ? "unknown"
+                : Assembly.GetExecutingAssembly().GetName().Version.ToString();
+            string cacheDirectory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "McpVs2010",
+                "server-cache",
+                version + "-" + Process.GetCurrentProcess().Id);
+            Directory.CreateDirectory(cacheDirectory);
+
+            foreach (string sourcePath in Directory.GetFiles(installedDirectory))
+            {
+                string sourceName = Path.GetFileName(sourcePath);
+                const string payloadSuffix = ".payload.pdb";
+                string targetName = sourceName.EndsWith(payloadSuffix, StringComparison.OrdinalIgnoreCase)
+                    ? sourceName.Substring(0, sourceName.Length - payloadSuffix.Length)
+                    : sourceName;
+                File.Copy(sourcePath, Path.Combine(cacheDirectory, targetName), true);
+            }
+
+            return cacheDirectory;
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+
+            _disposed = true;
+            try
+            {
+                if (!_process.HasExited)
+                {
+                    _process.Kill();
+                    _process.WaitForExit(5000);
+                }
+            }
+            catch
+            {
+                // VS 종료 중에는 이미 서버가 부모 PID 감지로 종료되었을 수 있다.
+            }
+            finally
+            {
+                _process.Dispose();
+            }
+        }
+
+        public void Stop()
+        {
+            Dispose();
+        }
+    }
+}

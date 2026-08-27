@@ -1,0 +1,12 @@
+[$RootKey$\Packages\{4B44EE54-9118-43B8-894C-947D70701352}]
+@="MCP VS2010 Bridge"
+"InprocServer32"="$System$\mscoree.dll"
+"Class"="McpVs2010.Bridge.McpVs2010Package"
+"Assembly"="McpVs2010.Bridge, Version=1.0.20.0, Culture=neutral, PublicKeyToken=null"
+"CodeBase"="$PackageFolder$\McpVs2010.Bridge.dll"
+
+[$RootKey$\AutoLoadPackages\{ADFC4E64-0397-11D1-9F4E-00A0C911004F}]
+"{4B44EE54-9118-43B8-894C-947D70701352}"=dword:00000000
+
+[$RootKey$\AutoLoadPackages\{F1536EF8-92EC-443C-9ED7-FDADF150DA82}]
+"{4B44EE54-9118-43B8-894C-947D70701352}"=dword:00000000
