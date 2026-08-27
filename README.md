@@ -39,11 +39,11 @@ PowerShell에서 다음을 실행합니다.
 
 산출물:
 
-- `artifacts\server-1.0.12\McpVs2010.Server.exe`
-- `artifacts\McpVs2010.Bridge-1.0.12.vsix`
-- `artifacts\McpVs2010-Deployment-1.0.12.zip` (다른 사용자 배포용)
+- `artifacts\server-1.0.30\McpVs2010.Server.exe`
+- `artifacts\McpVs2010.Bridge-1.0.30.vsix`
+- `artifacts\McpVs2010-Deployment-1.0.30.zip` (다른 사용자 배포용)
 
-서버 `1.0.12`와 VSIX `1.0.12`은 솔루션 열기 명령이 추가된 브리지 프로토콜 3을 사용합니다. VSIX는 셸 초기화 완료 후 VS SDK의 `IVsSolution` 서비스로 솔루션을 닫고 엽니다. 서버 실행 파일은 VSIX에 포함되며, 브리지 수명 동안만 자동 실행됩니다. HTTP Stream 포트는 사용자 레지스트리 `HKCU\Software\McpVs2010\HttpStreamPort`(REG_DWORD)에 저장됩니다.
+서버와 VSIX `1.0.30`은 솔루션 열기 및 Project Only 명령을 지원합니다. VSIX는 셸 초기화 완료 후 VS SDK의 `IVsSolution` 서비스로 솔루션을 닫고 엽니다. 설치된 서버 파일은 `%LOCALAPPDATA%\McpVs2010`에 저장됩니다. VS2010이 실행되면 VSIX가 이 위치의 MCP 서버를 자동으로 시작하고, VS2010이 종료되면 서버도 종료합니다. HTTP Stream 포트는 사용자 레지스트리 `HKCU\Software\McpVs2010\HttpStreamPort`(REG_DWORD)에 저장됩니다.
 
 빌드 스크립트는 `VS100COMNTOOLS`와 32비트 Visual Studio 레지스트리를 순서대로 확인합니다. `vswhere`만으로 VS2010을 판단하지 않습니다.
 
@@ -57,7 +57,7 @@ PowerShell에서 다음을 실행합니다.
 
 ### 다른 사용자에게 배포
 
-소스 저장소가 없는 PC에는 `artifacts\McpVs2010-Deployment-1.0.13.zip`을 전달합니다. ZIP을 압축 해제한 뒤 `Install-McpVs2010-Bridge.cmd`를 실행하면 포함된 VSIX가 설치됩니다. 배포 폴더의 `README-배포.txt`에 사전 조건, 자동 실행 동작과 포트 변경 방법이 정리되어 있습니다.
+소스 저장소가 없는 PC에는 `artifacts\McpVs2010-Deployment-1.0.30.zip` 또는 `McpVs2010-Deployment-Latest.zip`을 전달합니다. ZIP을 압축 해제한 뒤 `Install-McpVs2010-Bridge.cmd`를 실행하면 VSIX와 사용자용 MCP 서버 파일이 설치됩니다. 배포 폴더의 `README-Deployment.txt`에 사전 조건, 자동 실행 동작과 포트 변경 방법이 정리되어 있습니다.
 
 배포 설치에는 Visual Studio 2010의 VSIX 지원과 .NET 10 런타임이 필요합니다. Qt 등 프로젝트별 외부 플러그인은 배포 패키지가 설치하거나 검사하지 않으며, 사용자가 해당 PC에서 별도로 관리합니다.
 
@@ -75,13 +75,19 @@ VS2010 설치기를 직접 지정해 일반 설치 창을 열 수도 있습니�
 
 ```powershell
 & 'C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\VSIXInstaller.exe' `
-  'D:\WORK\ai_work\codex\mcp_vs2010\artifacts\McpVs2010.Bridge-1.0.13.vsix'
+  'D:\WORK\ai_work\codex\mcp_vs2010\artifacts\McpVs2010.Bridge-1.0.30.vsix'
 ```
 
 설치 후 VS2010을 다시 시작합니다. 브리지가 로드되면 다음 위치에 인스턴스 검색 파일이 생성됩니다.
 
 ```text
 %LOCALAPPDATA%\McpVs2010\instances\<devenv-pid>.json
+```
+
+설치 스크립트는 서버 실행 파일과 종속 파일을 다음 고정 경로에 복사합니다.
+
+```text
+%LOCALAPPDATA%\McpVs2010\McpVs2010.Server.exe
 ```
 
 VS2010의 `Tools > MCP server` 메뉴를 선택하면 대화창이 표시됩니다. 대화창에서 현재 접속 URL과 서버 상태를 확인하고 `STOP`, `START`, 포트 입력 및 `Apply`를 사용할 수 있습니다. 포트를 변경하면 레지스트리 저장 후 실행 중인 서버가 자동으로 재시작됩니다.
@@ -92,7 +98,7 @@ VS2010의 `Tools > MCP server` 메뉴를 선택하면 대화창이 표시됩니�
 .\scripts\Install-Vsix.ps1 -WhatIf
 ```
 
-## 서버 실행
+## 서버 자동 실행 및 접속
 
 기본적으로 loopback 주소에만 바인딩하며 MCP 엔드포인트는 다음과 같습니다.
 
@@ -100,13 +106,13 @@ VS2010의 `Tools > MCP server` 메뉴를 선택하면 대화창이 표시됩니�
 http://127.0.0.1:3010/stream
 ```
 
-서버를 실행합니다.
+배포 설치 후 서버 실행 파일은 다음 위치에 있습니다. 이 파일은 VS2010 실행 시 VSIX가 자동으로 시작하므로 사용자가 별도로 실행할 필요가 없습니다.
 
-```powershell
-.\artifacts\server-1.0.13\McpVs2010.Server.exe
+```text
+%LOCALAPPDATA%\McpVs2010\McpVs2010.Server.exe
 ```
 
-기본 HTTP Stream 포트는 3010이며, VS2010의 `Tools > MCP Config > HTTP Stream 포트 설정...`에서 변경합니다.
+기본 HTTP Stream 포트는 3010이며, VS2010의 `Tools > MCP server` 대화상자에서 변경합니다.
 
 ```text
 HKCU\Software\McpVs2010\HttpStreamPort = 3010 (REG_DWORD)
@@ -114,10 +120,10 @@ HKCU\Software\McpVs2010\HttpStreamPort = 3010 (REG_DWORD)
 
 허용 범위는 `1`~`65535`입니다. 레지스트리 값이 없으면 기본값 `3010`을 사용하며, 값이 잘못되면 서버가 원인을 표시하고 종료합니다. 바인딩 주소와 MCP 경로는 각각 `127.0.0.1`, `/stream`입니다.
 
-일시적으로 설정 파일보다 다른 URL을 우선 적용하려면 ASP.NET Core의 `--urls` 옵션을 사용할 수 있습니다. Host와 Origin은 loopback 주소만 허용합니다.
+진단 목적으로 직접 실행하거나 일시적으로 다른 URL을 적용하려면 ASP.NET Core의 `--urls` 옵션을 사용할 수 있습니다. Host와 Origin은 loopback 주소만 허용합니다.
 
 ```powershell
-.\artifacts\server-1.0.13\McpVs2010.Server.exe --urls http://127.0.0.1:3020
+%LOCALAPPDATA%\McpVs2010\McpVs2010.Server.exe --urls http://127.0.0.1:3020
 ```
 
 ## Codex 연결
@@ -131,7 +137,7 @@ startup_timeout_sec = 20
 tool_timeout_sec = 3600
 ```
 
-서버는 Codex가 시작하지 않으므로 Codex 연결 전에 직접 실행해야 합니다.
+Codex는 VSIX가 자동으로 실행한 서버의 URL에 연결합니다. 먼저 VS2010과 MCP VS2010 Bridge가 실행 중이어야 합니다.
 레지스트리의 포트를 바꾸면 위 URL의 포트도 같은 값으로 변경해야 합니다. 메뉴에서 포트를 변경하면 서버가 자동으로 재시작됩니다.
 
 ## MCP 도구
