@@ -8,13 +8,10 @@
     <Nullable>enable</Nullable>
     <AssemblyName>McpVs2010.Server</AssemblyName>
     <RootNamespace>McpVs2010.Server</RootNamespace>
-    <Version>1.1.12</Version>
+    <Version>1.1.25</Version>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.2.0" />
-    <Content Include="..\..\vs2010.ico" Link="vs2010.ico">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
-    </Content>
+    <EmbeddedResource Include="..\..\vs2010.ico" Link="vs2010.ico" />
   </ItemGroup>
 </Project>

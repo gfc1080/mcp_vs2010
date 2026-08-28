@@ -4,6 +4,8 @@ using System.IO;
 using System.Reflection;
 using System.Linq;
 using System.Threading;
+using System.IO.Pipes;
+using System.Text;
 
 namespace McpVs2010.Bridge
 {
@@ -100,6 +102,23 @@ namespace McpVs2010.Bridge
                 throw new InvalidOperationException("MCP VS2010 서버 프로세스를 시작하지 못했습니다.");
 
             return new McpServerProcess(process, true);
+        }
+
+        internal static void RequestTrayVisibilityCheck()
+        {
+            try
+            {
+                using (var pipe = new NamedPipeClientStream(".", "McpVs2010.Control", PipeDirection.Out))
+                {
+                    pipe.Connect(1500);
+                    using (var writer = new StreamWriter(pipe, new UTF8Encoding(false)) { AutoFlush = true })
+                        writer.WriteLine("{\"command\":\"check-tray\"}");
+                }
+            }
+            catch
+            {
+                // The server may still be starting; the next VSIX instance can retry.
+            }
         }
 
         private static string FindInstalledServerDirectory(string assemblyDirectory)

@@ -24,6 +24,11 @@ namespace McpVs2010.Bridge
             try
             {
                 _serverProcess = McpServerProcess.Start();
+                System.Threading.ThreadPool.QueueUserWorkItem(delegate
+                {
+                    System.Threading.Thread.Sleep(1500);
+                    McpServerProcess.RequestTrayVisibilityCheck();
+                });
             }
             catch (Exception ex)
             {

@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.IO.Pipes;
 using System.Text;
+using System.Reflection;
 
 namespace McpVs2010.Server;
 
@@ -31,6 +32,8 @@ internal static class ServerTray
         private readonly System.Windows.Forms.Timer _configRequestTimer;
         private volatile bool _closing;
         private int _configRequested;
+        private int _trayCheckRequested;
+        private TrayVisibilityForm? _trayVisibilityForm;
         private ConfigForm? _configForm;
 
         public TrayContext(IHostApplicationLifetime lifetime)
@@ -56,6 +59,10 @@ internal static class ServerTray
             {
                 _visibilityTimer.Stop();
                 _visibilityTimer.Dispose();
+                // Explorer has registered the icon now. Remove stale entries
+                // left by older versioned server paths, while preserving the
+                // current executable's notification setting.
+                RemoveDuplicateTrayEntries();
                 ShowTrayVisibilityPromptIfNeeded();
             };
             _visibilityTimer.Start();
@@ -64,6 +71,8 @@ internal static class ServerTray
             {
                 if (Interlocked.Exchange(ref _configRequested, 0) != 0)
                     ShowConfig();
+                if (Interlocked.Exchange(ref _trayCheckRequested, 0) != 0)
+                    ShowTrayVisibilityPromptIfNeeded();
             };
             _configRequestTimer.Start();
             lifetime.ApplicationStopping.Register(() =>
@@ -87,8 +96,11 @@ internal static class ServerTray
                     using var reader = new StreamReader(pipe, Encoding.UTF8, false, 1024, true);
                     using var writer = new StreamWriter(pipe, new UTF8Encoding(false), 1024, true) { AutoFlush = true };
                     string? command = reader.ReadLine();
-                    bool success = command?.IndexOf("show-config", StringComparison.OrdinalIgnoreCase) >= 0;
-                    if (success) Interlocked.Exchange(ref _configRequested, 1);
+                    bool showConfig = command?.IndexOf("show-config", StringComparison.OrdinalIgnoreCase) >= 0;
+                    bool checkTray = command?.IndexOf("check-tray", StringComparison.OrdinalIgnoreCase) >= 0;
+                    bool success = showConfig || checkTray;
+                    if (showConfig) Interlocked.Exchange(ref _configRequested, 1);
+                    if (checkTray) Interlocked.Exchange(ref _trayCheckRequested, 1);
                     writer.WriteLine(success ? "{\"success\":true}" : "{\"success\":false}");
                 }
                 catch (ThreadInterruptedException) { return; }
@@ -97,17 +109,25 @@ internal static class ServerTray
             }
         }
 
-        private static void ShowTrayVisibilityPromptIfNeeded()
+        private void ShowTrayVisibilityPromptIfNeeded()
         {
             try
             {
                 if (IsTrayVisibilityPromptDisabled() || !IsTrayIconHidden()) return;
-                using var dialog = new TrayVisibilityForm();
-                if (dialog.ShowDialog() == DialogResult.Yes)
+                if (_trayVisibilityForm != null && !_trayVisibilityForm.IsDisposed) return;
+                _trayVisibilityForm = new TrayVisibilityForm();
+                _trayVisibilityForm.FormClosed += (_, _) =>
                 {
-                    Process.Start(new ProcessStartInfo("ms-settings:taskbar") { UseShellExecute = true });
-                }
-                if (dialog.DoNotShowAgain) SetTrayVisibilityPromptDisabled();
+                    try
+                    {
+                        if (_trayVisibilityForm!.OpenSettingsRequested)
+                            Process.Start(new ProcessStartInfo("ms-settings:taskbar") { UseShellExecute = true });
+                        if (_trayVisibilityForm.DoNotShowAgain) SetTrayVisibilityPromptDisabled();
+                    }
+                    catch { }
+                    finally { _trayVisibilityForm = null; }
+                };
+                _trayVisibilityForm.Show();
             }
             catch { }
         }
@@ -125,13 +145,48 @@ internal static class ServerTray
             {
                 using var item = settings.OpenSubKey(name, false);
                 string? itemPath = item?.GetValue("ExecutablePath") as string;
-                if (string.IsNullOrWhiteSpace(itemPath) ||
-                    (!string.IsNullOrWhiteSpace(executablePath) &&
-                     !string.Equals(itemPath, executablePath, StringComparison.OrdinalIgnoreCase))) continue;
+                string? iconPath = item?.GetValue("IconPath") as string;
+                bool pathMatches = !string.IsNullOrWhiteSpace(executablePath) &&
+                    (string.Equals(itemPath, executablePath, StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(iconPath, executablePath, StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(Path.GetFileName(itemPath), Path.GetFileName(executablePath), StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(Path.GetFileName(iconPath), Path.GetFileName(executablePath), StringComparison.OrdinalIgnoreCase));
+                if (!pathMatches) continue;
                 matchingEntryFound = true;
-                if (item?.GetValue("IsPromoted") is int promoted && promoted == 0) return true;
+                if (item?.GetValue("IsPromoted") is not int promoted || promoted == 0) return true;
             }
             return !matchingEntryFound;
+        }
+
+        private static void RemoveDuplicateTrayEntries()
+        {
+            try
+            {
+                string executablePath = Environment.ProcessPath ?? string.Empty;
+                string executableName = Path.GetFileName(executablePath);
+                if (string.IsNullOrWhiteSpace(executableName)) return;
+                using var settings = Registry.CurrentUser.OpenSubKey(
+                    @"Control Panel\NotifyIconSettings", true);
+                if (settings == null) return;
+
+                string? keptPath = null;
+                foreach (string name in settings.GetSubKeyNames())
+                {
+                    using var item = settings.OpenSubKey(name, false);
+                    string? itemPath = item?.GetValue("ExecutablePath") as string
+                        ?? item?.GetValue("IconPath") as string;
+                    if (!string.Equals(Path.GetFileName(itemPath), executableName,
+                        StringComparison.OrdinalIgnoreCase)) continue;
+
+                    if (string.Equals(itemPath, executablePath, StringComparison.OrdinalIgnoreCase) && keptPath == null)
+                    {
+                        keptPath = itemPath;
+                        continue;
+                    }
+                    settings.DeleteSubKeyTree(name, false);
+                }
+            }
+            catch { }
         }
 
         private static bool IsTrayVisibilityPromptDisabled()
@@ -155,8 +210,14 @@ internal static class ServerTray
         {
             try
             {
-                string path = Path.Combine(AppContext.BaseDirectory, "vs2010.ico");
-                if (File.Exists(path)) return new Icon(path);
+                foreach (string resourceName in Assembly.GetExecutingAssembly().GetManifestResourceNames())
+                {
+                    if (!resourceName.EndsWith("vs2010.ico", StringComparison.OrdinalIgnoreCase)) continue;
+                    using Stream? stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
+                    if (stream == null) continue;
+                    using var embeddedIcon = new Icon(stream);
+                    return new Icon(embeddedIcon, embeddedIcon.Size);
+                }
             }
             catch { }
             return SystemIcons.Application;
@@ -205,6 +266,7 @@ internal static class ServerTray
     {
         private readonly CheckBox _doNotShowAgain = new CheckBox();
         public bool DoNotShowAgain => _doNotShowAgain.Checked;
+        public bool OpenSettingsRequested { get; private set; }
 
         public TrayVisibilityForm()
         {
@@ -220,16 +282,19 @@ internal static class ServerTray
             Controls.Add(new Label
             {
                 Text = "The MCP server tray icon is hidden.\r\n\r\n" +
-                       "To show it, enable MCP VS2010 in Other system tray icons.\r\n\r\n" +
-                       "Open the Other system tray icons settings now?",
+                       "In the settings window, expand Other system tray icons\r\n" +
+                       "and turn on McpVs2010.Server.\r\n\r\n" +
+                       "Open the taskbar settings now?",
                 Left = 20, Top = 18, Width = 440, Height = 90,
                 AutoSize = false
             });
             _doNotShowAgain.Text = "Do not show this message again";
             _doNotShowAgain.Left = 20; _doNotShowAgain.Top = 120; _doNotShowAgain.AutoSize = true;
             Controls.Add(_doNotShowAgain);
-            var yes = new Button { Text = "YES", DialogResult = DialogResult.Yes, Left = 285, Top = 160, Width = 75 };
-            var no = new Button { Text = "NO", DialogResult = DialogResult.No, Left = 370, Top = 160, Width = 75 };
+            var yes = new Button { Text = "YES", Left = 285, Top = 160, Width = 75 };
+            var no = new Button { Text = "NO", Left = 370, Top = 160, Width = 75 };
+            yes.Click += (_, _) => { OpenSettingsRequested = true; Close(); };
+            no.Click += (_, _) => Close();
             Controls.Add(yes); Controls.Add(no);
             AcceptButton = yes; CancelButton = no;
         }
@@ -239,9 +304,11 @@ internal static class ServerTray
     {
         private readonly IHostApplicationLifetime _lifetime;
         private readonly Label _status = new Label();
+        private readonly Label _url = new Label();
         private readonly TextBox _port = new TextBox();
         private readonly ListBox _bridges = new ListBox();
         private readonly CheckBox _startup = new CheckBox();
+        private readonly CheckBox _trayPrompt = new CheckBox();
         private readonly Button _toggle = new Button();
         private readonly Button _apply = new Button();
         private readonly Button _restart = new Button();
@@ -253,31 +320,36 @@ internal static class ServerTray
             Text = "MCP Server Configuration";
             StartPosition = FormStartPosition.CenterScreen;
             FormBorderStyle = FormBorderStyle.FixedDialog;
-            ClientSize = new Size(520, 330);
-            AutoScaleMode = AutoScaleMode.Dpi;
-            AutoScaleDimensions = new SizeF(96F, 96F);
+            ClientSize = new Size(520, 390);
             MaximizeBox = MinimizeBox = false;
             Font = new Font("Consolas", 10F, FontStyle.Regular, GraphicsUnit.Point);
-            AutoScaleMode = AutoScaleMode.Dpi;
-            AutoScaleDimensions = new SizeF(96F, 96F);
 
-            Controls.Add(new Label { Text = "Server status:", Left = 20, Top = 22, AutoSize = true });
-            _status.Left = 155; _status.Top = 22; _status.AutoSize = true;
+            Controls.Add(new Label { Text = "Server URL:", Left = 20, Top = 22, AutoSize = true });
+            _url.Left = 155; _url.Top = 22; _url.Width = 275; _url.AutoSize = false;
+            Controls.Add(_url);
+            var copy = new Button { Text = "copy", Left = 440, Top = 17, Width = 60 };
+            copy.Click += (_, _) => Clipboard.SetText(_url.Text); Controls.Add(copy);
+            Controls.Add(new Label { Text = "Server status:", Left = 20, Top = 62, AutoSize = true });
+            _status.Left = 155; _status.Top = 62; _status.AutoSize = true;
             Controls.Add(_status);
-            Controls.Add(new Label { Text = "Server port:", Left = 20, Top = 58, AutoSize = true });
-            _port.Left = 155; _port.Top = 54; _port.Width = 100;
+            Controls.Add(new Label { Text = "Server port:", Left = 20, Top = 98, AutoSize = true });
+            _port.Left = 155; _port.Top = 94; _port.Width = 100;
             Controls.Add(_port);
-            _apply.Text = "Apply"; _apply.Left = 270; _apply.Top = 52; _apply.Width = 80;
+            _apply.Text = "Apply"; _apply.Left = 270; _apply.Top = 92; _apply.Width = 80;
             _apply.Click += ApplyPort; Controls.Add(_apply);
-            Controls.Add(new Label { Text = "Connected bridges:", Left = 20, Top = 95, AutoSize = true });
-            _bridges.Left = 20; _bridges.Top = 120; _bridges.Width = 480; _bridges.Height = 120;
+            Controls.Add(new Label { Text = "Connected bridges:", Left = 20, Top = 135, AutoSize = true });
+            _bridges.Left = 20; _bridges.Top = 160; _bridges.Width = 480; _bridges.Height = 110;
             Controls.Add(_bridges);
-            _startup.Text = "Start MCP server when Windows starts"; _startup.Left = 20; _startup.Top = 255; _startup.AutoSize = true;
+            _startup.Text = "Start MCP server when Windows starts"; _startup.Left = 20; _startup.Top = 285; _startup.AutoSize = true;
             _startup.CheckedChanged += StartupChanged; Controls.Add(_startup);
-            _toggle.Text = "STOP"; _toggle.Left = 320; _toggle.Top = 16; _toggle.Width = 70;
+            _trayPrompt.Text = "Always check whether the tray icon is hidden"; _trayPrompt.Left = 20; _trayPrompt.Top = 312; _trayPrompt.AutoSize = true;
+            _trayPrompt.CheckedChanged += TrayPromptChanged; Controls.Add(_trayPrompt);
+            _toggle.Text = "STOP"; _toggle.Left = 320; _toggle.Top = 56; _toggle.Width = 70;
             _toggle.Click += (_, _) => ToggleServer(); Controls.Add(_toggle);
-            _restart.Text = "RESTART"; _restart.Left = 400; _restart.Top = 16; _restart.Width = 100;
+            _restart.Text = "RESTART"; _restart.Left = 400; _restart.Top = 56; _restart.Width = 100;
             _restart.Click += (_, _) => RestartServer(); Controls.Add(_restart);
+            var close = new Button { Text = "Close", Left = 415, Top = 345, Width = 85, DialogResult = DialogResult.Cancel };
+            Controls.Add(close); CancelButton = close;
             RefreshView();
         }
 
@@ -286,6 +358,7 @@ internal static class ServerTray
             bool running = ServerRuntimeState.HttpEnabled && !_lifetime.ApplicationStopping.IsCancellationRequested;
             _status.Text = running ? "Running" : "Stopped";
             _status.ForeColor = running ? Color.DarkGreen : Color.DarkRed;
+            _url.Text = $"http://127.0.0.1:{ReadPort()}/stream";
             _toggle.Text = running ? "STOP" : "START";
             _toggle.Enabled = !_restarting;
             _restart.Enabled = !_restarting;
@@ -293,6 +366,7 @@ internal static class ServerTray
             _apply.Enabled = !_restarting;
             _port.Text = ReadPort().ToString();
             _startup.Checked = IsStartupEnabled();
+            _trayPrompt.Checked = !IsTrayVisibilityPromptDisabled();
             _bridges.Items.Clear();
             string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "McpVs2010", "instances");
             if (Directory.Exists(dir)) foreach (string file in Directory.GetFiles(dir, "*.json"))
@@ -334,7 +408,19 @@ internal static class ServerTray
             else key.DeleteValue("McpVs2010.Server", false);
         }
 
+        private void TrayPromptChanged(object? sender, EventArgs e)
+        {
+            using var key = Registry.CurrentUser.CreateSubKey(@"Software\McpVs2010");
+            key?.SetValue("TrayVisibilityPromptDisabled", _trayPrompt.Checked ? 0 : 1, RegistryValueKind.DWord);
+        }
+
         private static int ReadPort() { using var key = Registry.CurrentUser.OpenSubKey(@"Software\McpVs2010"); return key?.GetValue("HttpStreamPort") is int port && port > 0 && port <= 65535 ? port : 3010; }
+        private static bool IsTrayVisibilityPromptDisabled()
+        {
+            using var key = Registry.CurrentUser.CreateSubKey(@"Software\McpVs2010");
+            object? value = key?.GetValue("TrayVisibilityPromptDisabled");
+            return value is int disabled && disabled == 1;
+        }
         private static bool IsStartupEnabled() { using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run"); return key?.GetValue("McpVs2010.Server") != null; }
         private async Task StartServerAsync()
         {
