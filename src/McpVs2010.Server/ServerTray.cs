@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.IO.Pipes;
 using System.Text;
 using System.Reflection;
+using System.Runtime.InteropServices;
 
 namespace McpVs2010.Server;
 
@@ -35,6 +36,25 @@ internal static class ServerTray
         private int _trayCheckRequested;
         private TrayVisibilityForm? _trayVisibilityForm;
         private ConfigForm? _configForm;
+
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
+
+        [DllImport("user32.dll")]
+        private static extern bool BringWindowToTop(IntPtr hWnd);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter,
+            int x, int y, int cx, int cy, uint flags);
+
+        private static readonly IntPtr HwndTop = IntPtr.Zero;
+        private const int SwShownormal = 1;
+        private const uint SwpNosize = 0x0001;
+        private const uint SwpNomove = 0x0002;
+        private const uint SwpShowwindow = 0x0040;
 
         public TrayContext(IHostApplicationLifetime lifetime)
         {
@@ -229,17 +249,30 @@ internal static class ServerTray
             {
                 if (_configForm.WindowState == FormWindowState.Minimized)
                     _configForm.WindowState = FormWindowState.Normal;
-                _configForm.Activate();
+                FocusConfigWindow(_configForm);
                 return;
             }
 
             _configForm = new ConfigForm(_lifetime);
+            _configForm.Shown += (_, _) => FocusConfigWindow(_configForm);
             try { _configForm.ShowDialog(); }
             finally
             {
                 _configForm.Dispose();
                 _configForm = null;
             }
+        }
+
+        private static void FocusConfigWindow(Form form)
+        {
+            if (!form.IsHandleCreated) form.CreateControl();
+            ShowWindowAsync(form.Handle, SwShownormal);
+            SetWindowPos(form.Handle, HwndTop, 0, 0, 0, 0,
+                SwpNomove | SwpNosize | SwpShowwindow);
+            form.BringToFront();
+            BringWindowToTop(form.Handle);
+            form.Activate();
+            SetForegroundWindow(form.Handle);
         }
 
         private void ExitServer()
@@ -312,6 +345,7 @@ internal static class ServerTray
         private readonly Button _toggle = new Button();
         private readonly Button _apply = new Button();
         private readonly Button _restart = new Button();
+        private readonly System.Windows.Forms.Timer _refreshTimer = new System.Windows.Forms.Timer { Interval = 1000 };
         private bool _restarting;
 
         public ConfigForm(IHostApplicationLifetime lifetime)
@@ -350,7 +384,15 @@ internal static class ServerTray
             _restart.Click += (_, _) => RestartServer(); Controls.Add(_restart);
             var close = new Button { Text = "Close", Left = 415, Top = 345, Width = 85, DialogResult = DialogResult.Cancel };
             Controls.Add(close); CancelButton = close;
+            _refreshTimer.Tick += (_, _) => RefreshView();
+            _refreshTimer.Start();
             RefreshView();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) _refreshTimer.Dispose();
+            base.Dispose(disposing);
         }
 
         private void RefreshView()
@@ -371,7 +413,18 @@ internal static class ServerTray
             string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "McpVs2010", "instances");
             if (Directory.Exists(dir)) foreach (string file in Directory.GetFiles(dir, "*.json"))
             {
-                try { using var doc = JsonDocument.Parse(File.ReadAllText(file)); var root = doc.RootElement; _bridges.Items.Add($"PID {root.GetProperty("processId").GetInt32()}  {root.GetProperty("solutionPath").GetString()}"); } catch { }
+                try
+                {
+                    using var doc = JsonDocument.Parse(File.ReadAllText(file));
+                    var root = doc.RootElement;
+                    int processId = root.GetProperty("processId").GetInt32();
+                    string solutionPath = root.TryGetProperty("solutionPath", out var pathElement) &&
+                        pathElement.ValueKind == JsonValueKind.String
+                        ? pathElement.GetString() ?? "<No solution loaded>"
+                        : "<No solution loaded>";
+                    _bridges.Items.Add($"PID {processId}  {solutionPath}");
+                }
+                catch { }
             }
         }
 

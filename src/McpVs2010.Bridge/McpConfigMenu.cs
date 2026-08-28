@@ -5,6 +5,7 @@ using System.Windows.Forms;
 using System.Threading;
 using System.IO.Pipes;
 using System.Text;
+using System.Runtime.InteropServices;
 using EnvDTE80;
 using Microsoft.VisualStudio.CommandBars;
 using Microsoft.Win32;
@@ -13,6 +14,10 @@ namespace McpVs2010.Bridge
 {
     internal sealed class McpConfigMenu : IDisposable
     {
+        [DllImport("user32.dll")]
+        private static extern bool AllowSetForegroundWindow(int processId);
+
+        private const int AsfwAny = -1;
         private const string RegistryPath = @"Software\McpVs2010";
         private const string RegistryValue = "HttpStreamPort";
         private readonly Func<McpServerProcess> _getServer;
@@ -36,6 +41,10 @@ namespace McpVs2010.Bridge
         {
             try
             {
+                // VS2010 is the foreground process when this command is clicked.
+                // Explicitly allow the independent server process to activate its
+                // configuration window without making it topmost.
+                AllowSetForegroundWindow(AsfwAny);
                 using (var request = new NamedPipeClientStream(".", "McpVs2010.Control", PipeDirection.InOut))
                 {
                     request.Connect(1500);
