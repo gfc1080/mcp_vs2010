@@ -25,6 +25,7 @@ Current artifacts:
 
 - The `VERSION` value in `VERSION.DEF` is read and its final number is incremented by one for each build, then used for the server, VSIX, and deployment file names.
 - The version uses the three-part `major.minor.patch` format. For example, starting at `1.1.1`, the first build is `1.1.2`.
+- The current release is `1.1.30` (`McpVs2010.Bridge-1.1.30.vsix` and `McpVs2010-Deployment-1.1.30.zip`).
 
 Run `.\scripts\Test-Artifacts.ps1` to validate the VSIX structure, MCP handshake, and tools.
 
@@ -47,6 +48,8 @@ When VS2010 starts, the VSIX automatically starts the server from this location.
 Use `Tools > MCP server` in VS2010. The dialog shows the endpoint and status, provides STOP/START controls, includes a URL copy button, and lets you change the port with Apply. The port is stored as `REG_DWORD` at `HKCU\Software\McpVs2010\HttpStreamPort`; applying a new port restarts a running server.
 
 The default endpoint is `http://127.0.0.1:3010/stream`. The server binds to loopback only.
+
+When the VSIX starts, it sends a `check-tray` command to the server through the `McpVs2010.Control` named pipe. The server checks `HKCU\Software\McpVs2010\TrayVisibilityPromptDisabled` and displays tray-icon guidance when enabled. Selecting `Tools > MCP server` sends a `show-config` command through the same pipe to open the server's tray configuration window.
 
 ## Codex connection
 

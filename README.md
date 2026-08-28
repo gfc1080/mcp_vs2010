@@ -60,7 +60,7 @@ PowerShell에서 다음을 실행합니다.
 
 ### 다른 사용자에게 배포
 
-소스 저장소가 없는 PC에는 `artifacts\McpVs2010-Deployment-1.0.30.zip` 또는 `McpVs2010-Deployment-Latest.zip`을 전달합니다. ZIP을 압축 해제한 뒤 `Install-McpVs2010-Bridge.cmd`를 실행하면 VSIX와 사용자용 MCP 서버 파일이 설치됩니다. 배포 폴더의 `README-Deployment.txt`에 사전 조건, 자동 실행 동작과 포트 변경 방법이 정리되어 있습니다.
+소스 저장소가 없는 PC에는 `artifacts\McpVs2010-Deployment-1.1.30.zip` 또는 `McpVs2010-Deployment-Latest.zip`을 전달합니다. ZIP을 압축 해제한 뒤 `Install-McpVs2010-Bridge.cmd`를 실행하면 VSIX와 사용자용 MCP 서버 파일이 설치됩니다. 배포 폴더의 `README-Deployment.txt`에 사전 조건, 자동 실행 동작과 포트 변경 방법이 정리되어 있습니다.
 
 배포 설치에는 Visual Studio 2010의 VSIX 지원과 .NET 10 런타임이 필요합니다. Qt 등 프로젝트별 외부 플러그인은 배포 패키지가 설치하거나 검사하지 않으며, 사용자가 해당 PC에서 별도로 관리합니다. 자체 소스 코드는 `LICENSE`, 외부 의존성 라이선스는 `THIRD-PARTY-NOTICES.txt`를 참고하십시오.
 
@@ -78,7 +78,7 @@ VS2010 설치기를 직접 지정해 일반 설치 창을 열 수도 있습니�
 
 ```powershell
 & 'C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\VSIXInstaller.exe' `
-  'D:\WORK\ai_work\codex\mcp_vs2010\artifacts\McpVs2010.Bridge-1.0.30.vsix'
+  'D:\WORK\ai_work\codex\mcp_vs2010\artifacts\McpVs2010.Bridge-1.1.30.vsix'
 ```
 
 설치 후 VS2010을 다시 시작합니다. 브리지가 로드되면 다음 위치에 인스턴스 검색 파일이 생성됩니다.
