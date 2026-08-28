@@ -1,9 +1,9 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Vsix Version="1.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2010">
   <Identifier Id="McpVs2010.Bridge">
     <Name>MCP VS2010 Bridge</Name>
     <Author>YoungSub Yoon</Author>
-    <Version>1.0.30</Version>
+    <Version>1.1.12</Version>
     <Description>Visual Studio 2010 solution and C++ Project Only build bridge for an external MCP server. Contact: bonunnal@gmail.com</Description>
     <Locale>1042</Locale>
     <SupportedProducts>

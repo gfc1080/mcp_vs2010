@@ -3,24 +3,28 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Linq;
+using System.Threading;
 
 namespace McpVs2010.Bridge
 {
     internal sealed class McpServerProcess : IDisposable
     {
         private readonly Process _process;
+        private readonly bool _ownsProcess;
         private static string _lastServerDirectory;
         private bool _disposed;
 
-        private McpServerProcess(Process process)
+        private McpServerProcess(Process process, bool ownsProcess)
         {
             _process = process;
+            _ownsProcess = ownsProcess;
         }
 
         public bool IsRunning
         {
             get
             {
+                if (_process == null) return true;
                 try { return !_process.HasExited; }
                 catch { return false; }
             }
@@ -28,6 +32,14 @@ namespace McpVs2010.Bridge
 
         public static McpServerProcess Start()
         {
+            try
+            {
+                using (Mutex.OpenExisting("Global\\McpVs2010.Server"))
+                    return new McpServerProcess(null, false);
+            }
+            catch (WaitHandleCannotBeOpenedException) { }
+            catch (UnauthorizedAccessException) { }
+
             string assemblyDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             if (string.IsNullOrEmpty(assemblyDirectory))
                 throw new InvalidOperationException("MCP VS2010 Bridge 설치 폴더를 확인할 수 없습니다.");
@@ -72,13 +84,12 @@ namespace McpVs2010.Bridge
             }
             _lastServerDirectory = serverDirectory;
 
-            int parentProcessId = Process.GetCurrentProcess().Id;
             bool useDotnetHost = !File.Exists(serverPath);
             ProcessStartInfo startInfo = new ProcessStartInfo
             {
                 FileName = useDotnetHost ? FindDotnetHost() : serverPath,
                 WorkingDirectory = serverDirectory,
-                Arguments = (useDotnetHost ? "\"" + serverDllPath + "\" " : string.Empty) + "--parent-process-id " + parentProcessId,
+                Arguments = useDotnetHost ? "\"" + serverDllPath + "\"" : string.Empty,
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 WindowStyle = ProcessWindowStyle.Hidden
@@ -88,7 +99,7 @@ namespace McpVs2010.Bridge
             if (process == null)
                 throw new InvalidOperationException("MCP VS2010 서버 프로세스를 시작하지 못했습니다.");
 
-            return new McpServerProcess(process);
+            return new McpServerProcess(process, true);
         }
 
         private static string FindInstalledServerDirectory(string assemblyDirectory)
@@ -152,17 +163,16 @@ namespace McpVs2010.Bridge
                 return;
 
             _disposed = true;
+            if (!_ownsProcess || _process == null) return;
             try
             {
-                if (!_process.HasExited)
-                {
-                    _process.Kill();
-                    _process.WaitForExit(5000);
-                }
+                // The MCP server is independent of VS2010 and must remain alive
+                // after the bridge package is unloaded. It is stopped only by
+                // the server tray Exit command or an explicit process stop.
             }
             catch
             {
-                // VS 종료 중에는 이미 서버가 부모 PID 감지로 종료되었을 수 있다.
+                // Ignore process-handle cleanup errors during VS shutdown.
             }
             finally
             {

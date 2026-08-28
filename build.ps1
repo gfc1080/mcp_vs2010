@@ -34,6 +34,18 @@ function Reset-ArtifactDirectory {
     New-Item -ItemType Directory -Path $Path -Force | Out-Null
 }
 
+function Clear-ArtifactsRoot {
+    if (-not (Test-Path -LiteralPath $artifactsRoot)) {
+        New-Item -ItemType Directory -Path $artifactsRoot -Force | Out-Null
+        return
+    }
+
+    Get-ChildItem -LiteralPath $artifactsRoot -Force | ForEach-Object {
+        Assert-ArtifactsPath -Path $_.FullName
+        Remove-Item -LiteralPath $_.FullName -Recurse -Force
+    }
+}
+
 function Find-Vs2010InstallDir {
     $fromEnvironment = [Environment]::GetEnvironmentVariable('VS100COMNTOOLS', 'Process')
     if ([string]::IsNullOrWhiteSpace($fromEnvironment)) {
@@ -80,16 +92,36 @@ if (-not (Test-Path -LiteralPath $bridgeMsBuild)) {
 $serverProject = Join-Path $projectRoot 'src\McpVs2010.Server\McpVs2010.Server.csproj'
 $bridgeProject = Join-Path $projectRoot 'src\McpVs2010.Bridge\McpVs2010.Bridge.csproj'
 $vsixManifestPath = Join-Path $projectRoot 'src\McpVs2010.Bridge\Vsix\extension.vsixmanifest'
+$assemblyInfoPath = Join-Path $projectRoot 'src\McpVs2010.Bridge\Properties\AssemblyInfo.cs'
+$versionDefPath = Join-Path $projectRoot 'VERSION.DEF'
+if (-not (Test-Path -LiteralPath $versionDefPath)) {
+    throw "VERSION.DEF was not found: $versionDefPath"
+}
+$versionLine = Get-Content -LiteralPath $versionDefPath |
+    Where-Object { $_ -match '^\s*VERSION\s*=\s*' } |
+    Select-Object -First 1
+if ([string]::IsNullOrWhiteSpace($versionLine) -or
+    $versionLine -notmatch '^\s*VERSION\s*=\s*(\d+(?:\.\d+){1,3})\s*$') {
+    throw "VERSION.DEF must contain VERSION=<major.minor.patch>; the final number is incremented for each build"
+}
+$versionParts = $Matches[1].Split('.')
+$lastVersionPart = 0
+if (-not [int]::TryParse($versionParts[$versionParts.Length - 1], [ref]$lastVersionPart)) {
+    throw "Invalid final version number in VERSION.DEF: $($Matches[1])"
+}
+$versionParts[$versionParts.Length - 1] = ($lastVersionPart + 1).ToString()
+$buildVersion = $versionParts -join '.'
+Set-Content -LiteralPath $versionDefPath -Value ("VERSION={0}" -f $buildVersion) -Encoding ASCII
+
 [xml]$serverProjectXml = Get-Content -LiteralPath $serverProject -Raw
 $serverVersionNode = $serverProjectXml.SelectSingleNode(
     '/*[local-name()="Project"]/*[local-name()="PropertyGroup"]/*[local-name()="Version"]')
 if ($null -eq $serverVersionNode -or [string]::IsNullOrWhiteSpace($serverVersionNode.InnerText)) {
     throw "Cannot read the version from the MCP server project: $serverProject"
 }
-$serverVersion = $serverVersionNode.InnerText.Trim()
-if ($serverVersion -notmatch '^\d+(\.\d+){1,3}$') {
-    throw "Invalid version for the MCP server artifact folder: $serverVersion"
-}
+$serverVersionNode.InnerText = $buildVersion
+$serverProjectXml.Save($serverProject)
+$serverVersion = $buildVersion
 
 [xml]$vsixManifest = Get-Content -LiteralPath $vsixManifestPath -Raw
 $vsixVersionNode = $vsixManifest.SelectSingleNode(
@@ -97,10 +129,17 @@ $vsixVersionNode = $vsixManifest.SelectSingleNode(
 if ($null -eq $vsixVersionNode -or [string]::IsNullOrWhiteSpace($vsixVersionNode.InnerText)) {
     throw "Cannot read the version from the VSIX manifest: $vsixManifestPath"
 }
-$vsixVersion = $vsixVersionNode.InnerText.Trim()
-if ($vsixVersion -notmatch '^\d+(\.\d+){1,3}$') {
-    throw "Invalid version for the VSIX filename: $vsixVersion"
+$vsixVersionNode.InnerText = $buildVersion
+$vsixManifest.Save($vsixManifestPath)
+$vsixVersion = $buildVersion
+
+if (-not (Test-Path -LiteralPath $assemblyInfoPath)) {
+    throw "Bridge assembly information file was not found: $assemblyInfoPath"
 }
+$assemblyInfo = Get-Content -LiteralPath $assemblyInfoPath -Raw
+$assemblyInfo = [regex]::Replace($assemblyInfo, 'AssemblyVersion\("[^"]+"\)', ('AssemblyVersion("{0}")' -f $buildVersion))
+$assemblyInfo = [regex]::Replace($assemblyInfo, 'AssemblyFileVersion\("[^"]+"\)', ('AssemblyFileVersion("{0}")' -f $buildVersion))
+Set-Content -LiteralPath $assemblyInfoPath -Value $assemblyInfo -Encoding UTF8
 
 $serverOutput = Join-Path $artifactsRoot ("server-{0}" -f $serverVersion)
 $vsixStage = Join-Path $artifactsRoot 'vsix-stage'
@@ -109,7 +148,7 @@ $deploymentOutput = Join-Path $artifactsRoot ("McpVs2010-Deployment-{0}" -f $vsi
 $deploymentZip = Join-Path $artifactsRoot ("McpVs2010-Deployment-{0}.zip" -f $vsixVersion)
 $latestDeploymentZip = Join-Path $artifactsRoot 'McpVs2010-Deployment-Latest.zip'
 
-New-Item -ItemType Directory -Path $artifactsRoot -Force | Out-Null
+Clear-ArtifactsRoot
 
 if (-not $SkipServer) {
     Reset-ArtifactDirectory -Path $serverOutput

@@ -1,14 +1,20 @@
-using System.Diagnostics;
 using Microsoft.Win32;
 using ModelContextProtocol.Server;
+using McpVs2010.Server;
 
 const string RegistryPath = @"Software\McpVs2010";
 const string RegistryPortValue = "HttpStreamPort";
 const int DefaultHttpStreamPort = 3010;
 const string McpEndpoint = "/stream";
+const string HealthEndpoint = "/health";
+
+using var serverMutex = new Mutex(true, "Global\\McpVs2010.Server", out bool isPrimaryServer);
+if (!isPrimaryServer)
+{
+    return;
+}
 
 int httpStreamPort = LoadHttpStreamPort(DefaultHttpStreamPort);
-int? parentProcessId = LoadParentProcessId(args);
 var builder = WebApplication.CreateBuilder(args);
 if (string.IsNullOrWhiteSpace(builder.Configuration["urls"]))
 {
@@ -30,15 +36,18 @@ builder.Services
     .WithToolsFromAssembly();
 
 var app = builder.Build();
-
-if (parentProcessId.HasValue)
-{
-    _ = MonitorParentProcessAsync(app.Lifetime, parentProcessId.Value);
-}
+ServerTray.Start(app.Lifetime);
 
 app.UseHostFiltering();
 app.Use(async (context, next) =>
 {
+    if (!ServerRuntimeState.HttpEnabled)
+    {
+        context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+        await context.Response.WriteAsync("MCP HTTP server is stopped.");
+        return;
+    }
+
     if (context.Request.Headers.TryGetValue("Origin", out var origins) &&
         (origins.Count != 1 || !IsLoopbackOrigin(origins[0])))
     {
@@ -51,6 +60,7 @@ app.Use(async (context, next) =>
 });
 
 app.MapMcp(McpEndpoint);
+app.MapGet(HealthEndpoint, () => Results.Ok("MCP VS2010 is running."));
 await app.RunAsync();
 
 static int LoadHttpStreamPort(int defaultPort)
@@ -63,66 +73,16 @@ static int LoadHttpStreamPort(int defaultPort)
     throw new InvalidOperationException($"Registry value {RegistryPath}\\{RegistryPortValue} must be an integer from 1 to 65535.");
 }
 
-static int? LoadParentProcessId(string[] args)
-{
-    for (int index = 0; index < args.Length; index++)
-    {
-        if (!string.Equals(args[index], "--parent-process-id", StringComparison.OrdinalIgnoreCase))
-            continue;
-
-        if (index + 1 >= args.Length ||
-            !int.TryParse(args[index + 1], out int parentProcessId) ||
-            parentProcessId <= 0)
-        {
-            throw new InvalidOperationException("--parent-process-id is not a valid process ID.");
-        }
-
-        return parentProcessId;
-    }
-
-    return null;
-}
-
-static async Task MonitorParentProcessAsync(IHostApplicationLifetime lifetime, int parentProcessId)
-{
-    while (!lifetime.ApplicationStopping.IsCancellationRequested)
-    {
-        bool parentAlive;
-        try
-        {
-            using var parent = Process.GetProcessById(parentProcessId);
-            parentAlive = !parent.HasExited &&
-                string.Equals(parent.ProcessName, "devenv", StringComparison.OrdinalIgnoreCase);
-        }
-        catch (ArgumentException)
-        {
-            parentAlive = false;
-        }
-        catch (InvalidOperationException)
-        {
-            parentAlive = false;
-        }
-
-        if (!parentAlive)
-        {
-            lifetime.StopApplication();
-            return;
-        }
-
-        try
-        {
-            await Task.Delay(1000, lifetime.ApplicationStopping);
-        }
-        catch (OperationCanceledException)
-        {
-            return;
-        }
-    }
-}
-
 static bool IsLoopbackOrigin(string? origin)
 {
     return Uri.TryCreate(origin, UriKind.Absolute, out var uri) &&
            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps) &&
            uri.IsLoopback;
+}
+
+internal static class ServerRuntimeState
+{
+    private static int _httpEnabled = 1;
+    public static bool HttpEnabled => Volatile.Read(ref _httpEnabled) != 0;
+    public static void SetHttpEnabled(bool enabled) => Volatile.Write(ref _httpEnabled, enabled ? 1 : 0);
 }

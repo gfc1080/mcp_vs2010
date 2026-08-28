@@ -1,6 +1,10 @@
 using System;
+using System.IO;
 using System.Drawing;
 using System.Windows.Forms;
+using System.Threading;
+using System.IO.Pipes;
+using System.Text;
 using EnvDTE80;
 using Microsoft.VisualStudio.CommandBars;
 using Microsoft.Win32;
@@ -29,7 +33,27 @@ namespace McpVs2010.Bridge
         { return new McpConfigMenu(dte, getServer, setServer); }
 
         private void OpenDialog(CommandBarButton Ctrl, ref bool CancelDefault)
-        { using (var dialog = new ServerDialog(_getServer, _setServer)) dialog.ShowDialog(); }
+        {
+            try
+            {
+                using (var request = new NamedPipeClientStream(".", "McpVs2010.Control", PipeDirection.InOut))
+                {
+                    request.Connect(1500);
+                    using (var writer = new StreamWriter(request, new UTF8Encoding(false)) { AutoFlush = true })
+                    {
+                        writer.WriteLine("{\"command\":\"show-config\"}");
+                    }
+                }
+            }
+            catch (TimeoutException)
+            {
+                MessageBox.Show("The MCP server is not running.", "MCP server", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Failed to open the MCP server configuration.\r\n" + ex.Message, "MCP server", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
 
         public void Dispose()
         { try { if (_menuItem != null) _menuItem.Delete(true); } catch { } }

@@ -19,6 +19,8 @@ PowerShell에서 다음을 실행합니다.
 .\build.ps1
 ```
 
+빌드를 시작하면 `artifacts` 폴더 내부가 먼저 모두 정리된 후 새 산출물이 생성됩니다.
+
 빌드 산출물만 정리하려면 다음을 실행합니다.
 
 ```powershell
@@ -41,11 +43,10 @@ PowerShell에서 다음을 실행합니다.
 
 산출물:
 
-- `artifacts\server-1.0.30\McpVs2010.Server.exe`
-- `artifacts\McpVs2010.Bridge-1.0.30.vsix`
-- `artifacts\McpVs2010-Deployment-1.0.30.zip` (다른 사용자 배포용)
+- `VERSION.DEF`의 `VERSION` 값을 읽은 후 마지막 숫자를 빌드마다 1씩 증가시켜 서버, VSIX 및 배포 파일명에 사용합니다.
+- 버전은 `major.minor.patch` 3자리 형식을 사용합니다. 예를 들어 `1.1.1`에서 시작하면 첫 빌드는 `1.1.2`입니다.
 
-서버와 VSIX `1.0.30`은 솔루션 열기 및 Project Only 명령을 지원합니다. VSIX는 셸 초기화 완료 후 VS SDK의 `IVsSolution` 서비스로 솔루션을 닫고 엽니다. 설치된 서버 파일은 `%LOCALAPPDATA%\McpVs2010`에 저장됩니다. VS2010이 실행되면 VSIX가 이 위치의 MCP 서버를 자동으로 시작하고, VS2010이 종료되면 서버도 종료합니다. HTTP Stream 포트는 사용자 레지스트리 `HKCU\Software\McpVs2010\HttpStreamPort`(REG_DWORD)에 저장됩니다.
+서버와 VSIX는 솔루션 열기 및 Project Only 명령을 지원합니다. 설치된 서버 파일은 `%LOCALAPPDATA%\McpVs2010`에 저장됩니다. VS2010이 실행되면 VSIX가 이 위치의 MCP 서버를 자동으로 시작하며, 서버는 트레이의 `Exit`를 선택할 때까지 계속 실행됩니다. HTTP Stream 포트는 사용자 레지스트리 `HKCU\Software\McpVs2010\HttpStreamPort`(REG_DWORD)에 저장됩니다.
 
 빌드 스크립트는 `VS100COMNTOOLS`와 32비트 Visual Studio 레지스트리를 순서대로 확인합니다. `vswhere`만으로 VS2010을 판단하지 않습니다.
 

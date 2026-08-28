@@ -17,13 +17,14 @@ Run in PowerShell:
 .\build.ps1
 ```
 
+Each build clears the contents of the `artifacts` folder before generating new outputs.
+
 Use `-AllBuildOutputs` with `clean.ps1` to also remove source `bin` and `obj` folders. Use `-WhatIf` to preview deletions.
 
 Current artifacts:
 
-- `artifacts\server-1.0.30\McpVs2010.Server.exe`
-- `artifacts\McpVs2010.Bridge-1.0.30.vsix`
-- `artifacts\McpVs2010-Deployment-1.0.30.zip`
+- The `VERSION` value in `VERSION.DEF` is read and its final number is incremented by one for each build, then used for the server, VSIX, and deployment file names.
+- The version uses the three-part `major.minor.patch` format. For example, starting at `1.1.1`, the first build is `1.1.2`.
 
 Run `.\scripts\Test-Artifacts.ps1` to validate the VSIX structure, MCP handshake, and tools.
 
@@ -39,7 +40,7 @@ Installed server files are placed at:
 %LOCALAPPDATA%\McpVs2010\McpVs2010.Server.exe
 ```
 
-When VS2010 starts, the VSIX automatically starts the server from this location. When VS2010 exits, the server is stopped.
+When VS2010 starts, the VSIX automatically starts the server from this location. The server continues running until `Exit` is selected from the tray menu.
 
 ## MCP server configuration
 
