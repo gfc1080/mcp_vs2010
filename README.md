@@ -152,6 +152,7 @@ Codex는 VSIX가 자동으로 실행한 서버의 URL에 연결합니다. 먼저
 - `open_vs2010_recent_solution`: 최근 목록의 지정 순번 솔루션 열기. 다른 솔루션이 열려 있으면 저장 후 닫음
 - `get_vs2010_state`: 열린 솔루션, 구성, 중첩 프로젝트, 빌드 상태
 - `close_vs2010_solution`: 현재 솔루션의 변경 내용을 모두 저장한 후 닫기
+- `create_new_solution`: 이름과 디렉터리로 새 빈 솔루션 생성
 - `build_vs2010_solution`: 솔루션 전체 `clean`, `build`, `rebuild`
 - `build_vs2010_project`: 선택한 Visual C++ 프로젝트만 `clean`, `build`, `rebuild`
 - `cancel_vs2010_build`: 진행 중인 DTE 빌드 취소 요청

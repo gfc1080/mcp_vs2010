@@ -32,6 +32,12 @@ namespace McpVs2010.Bridge.Protocol
 
         [DataMember(Name = "saveCurrentSolution", EmitDefaultValue = false)]
         public bool? SaveCurrentSolution { get; set; }
+
+        [DataMember(Name = "solutionName", EmitDefaultValue = false)]
+        public string SolutionName { get; set; }
+
+        [DataMember(Name = "solutionDirectory", EmitDefaultValue = false)]
+        public string SolutionDirectory { get; set; }
     }
 
     [DataContract]
@@ -287,5 +293,21 @@ namespace McpVs2010.Bridge.Protocol
 
         [DataMember(Name = "saved")]
         public bool Saved { get; set; }
+    }
+
+    [DataContract]
+    internal sealed class CreateSolutionResult
+    {
+        [DataMember(Name = "solutionName")]
+        public string SolutionName { get; set; }
+
+        [DataMember(Name = "solutionPath")]
+        public string SolutionPath { get; set; }
+
+        [DataMember(Name = "solutionDirectory")]
+        public string SolutionDirectory { get; set; }
+
+        [DataMember(Name = "closedSolutionPath", EmitDefaultValue = false)]
+        public string ClosedSolutionPath { get; set; }
     }
 }

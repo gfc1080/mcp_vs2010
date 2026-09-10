@@ -118,9 +118,11 @@ internal static class ServerTray
                     string? command = reader.ReadLine();
                     bool showConfig = command?.IndexOf("show-config", StringComparison.OrdinalIgnoreCase) >= 0;
                     bool checkTray = command?.IndexOf("check-tray", StringComparison.OrdinalIgnoreCase) >= 0;
-                    bool success = showConfig || checkTray;
+                    bool exit = command?.IndexOf("exit", StringComparison.OrdinalIgnoreCase) >= 0;
+                    bool success = showConfig || checkTray || exit;
                     if (showConfig) Interlocked.Exchange(ref _configRequested, 1);
                     if (checkTray) Interlocked.Exchange(ref _trayCheckRequested, 1);
+                    if (exit) _lifetime.StopApplication();
                     writer.WriteLine(success ? "{\"success\":true}" : "{\"success\":false}");
                 }
                 catch (ThreadInterruptedException) { return; }
@@ -351,7 +353,8 @@ internal static class ServerTray
         public ConfigForm(IHostApplicationLifetime lifetime)
         {
             _lifetime = lifetime;
-            Text = "MCP Server Configuration";
+            Version version = Assembly.GetExecutingAssembly().GetName().Version;
+            Text = "MCP Server Configuration (v" + (version == null ? "unknown" : version.ToString(3)) + ")";
             StartPosition = FormStartPosition.CenterScreen;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             ClientSize = new Size(520, 390);

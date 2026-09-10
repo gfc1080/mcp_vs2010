@@ -373,6 +373,45 @@ if ($null -eq $activeVersionNode -or
     throw "The VSIX version in the active registration path does not match the install target: $activeManifest"
 }
 
+# Stop the resident server before replacing its stable per-user payload. The
+# server is intentionally independent from VS2010, so VSIX upgrades must ask
+# it to exit explicitly before overwriting McpVs2010.Server.dll.
+function Stop-ResidentMcpServer {
+    try {
+        $pipe = New-Object -TypeName System.IO.Pipes.NamedPipeClientStream -ArgumentList @('.', 'McpVs2010.Control', [System.IO.Pipes.PipeDirection]::Out)
+        try {
+            $pipe.Connect(1500)
+            $encoding = New-Object -TypeName System.Text.UTF8Encoding -ArgumentList $false
+            $writer = New-Object -TypeName System.IO.StreamWriter -ArgumentList @($pipe, $encoding)
+            try {
+                $writer.AutoFlush = $true
+                $writer.WriteLine('{"command":"exit"}')
+            }
+            finally { $writer.Dispose() }
+        }
+        finally { $pipe.Dispose() }
+        Start-Sleep -Milliseconds 800
+        # Older server versions did not understand the exit signal. If one
+        # remains, stop only processes whose executable/command line identifies
+        # the MCP VS2010 server; unrelated dotnet processes are untouched.
+        foreach ($process in @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)) {
+            $commandLine = [string]$process.CommandLine
+            $name = [string]$process.Name
+            if ($name -ieq 'McpVs2010.Server.exe' -or
+                $commandLine -match '(?i)McpVs2010\.Server(\.dll|\.exe)') {
+                Stop-Process -Id ([int]$process.ProcessId) -Force -ErrorAction SilentlyContinue
+            }
+        }
+        Start-Sleep -Milliseconds 300
+        Write-Output 'Resident MCP server stopped for payload update.'
+    }
+    catch {
+        # No running server or an already-terminating server is acceptable.
+    }
+}
+
+Stop-ResidentMcpServer
+
 # VS2010 VSIXInstaller can omit arbitrary nested payload files. Restore the
 # bundled MCP server files from the VSIX into the active extension directory.
 Add-Type -AssemblyName System.IO.Compression.FileSystem

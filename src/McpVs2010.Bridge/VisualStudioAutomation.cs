@@ -157,6 +157,51 @@ namespace McpVs2010.Bridge
             });
         }
 
+        public CreateSolutionResult CreateEmptySolution(BridgeRequest request)
+        {
+            return OnUiThreadAtIdle(delegate
+            {
+                string name = string.IsNullOrWhiteSpace(request.SolutionName) ? null : request.SolutionName.Trim();
+                if (string.IsNullOrEmpty(name))
+                    throw new InvalidOperationException("솔루션 이름이 필요합니다.");
+                if (name.EndsWith(".sln", StringComparison.OrdinalIgnoreCase))
+                    name = Path.GetFileNameWithoutExtension(name);
+                if (string.IsNullOrWhiteSpace(name) || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+                    throw new InvalidOperationException("솔루션 이름이 올바르지 않습니다.");
+
+                string directory = string.IsNullOrWhiteSpace(request.SolutionDirectory)
+                    ? Environment.CurrentDirectory
+                    : request.SolutionDirectory.Trim();
+                directory = Path.GetFullPath(directory);
+                if (!Directory.Exists(directory))
+                    Directory.CreateDirectory(directory);
+
+                string currentPath = null;
+                if (_dte.Solution != null && _dte.Solution.IsOpen)
+                {
+                    currentPath = EmptyToNull(_dte.Solution.FullName);
+                    if (_dte.Solution.SolutionBuild.BuildState == vsBuildState.vsBuildStateInProgress)
+                        throw new InvalidOperationException("빌드가 진행 중이므로 현재 솔루션을 닫을 수 없습니다.");
+                    ThrowOnFailure(_solutionService.CloseSolutionElement(
+                        (uint)__VSSLNSAVEOPTIONS.SLNSAVEOPT_SaveIfDirty, null, 0));
+                    if (_dte.Solution.IsOpen)
+                        throw new InvalidOperationException("현재 솔루션을 닫지 못했습니다.");
+                }
+
+                _dte.Solution.Create(directory, name);
+                if (!_dte.Solution.IsOpen)
+                    throw new InvalidOperationException("빈 솔루션을 생성하지 못했습니다.");
+                string solutionPath = EmptyToNull(_dte.Solution.FullName);
+                return new CreateSolutionResult
+                {
+                    SolutionName = name,
+                    SolutionPath = solutionPath,
+                    SolutionDirectory = directory,
+                    ClosedSolutionPath = currentPath
+                };
+            });
+        }
+
         public BuildResult RunBuildOperation(BridgeRequest request)
         {
             string scope = NormalizeScope(request.Scope);

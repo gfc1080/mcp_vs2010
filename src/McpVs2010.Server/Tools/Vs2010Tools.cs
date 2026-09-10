@@ -77,6 +77,16 @@ public static class Vs2010Tools
         return ExecuteAsync(() => Client.CloseSolutionAsync(processId, cancellationToken));
     }
 
+    [McpServerTool, Description("새 Visual Studio 2010 빈 솔루션을 생성합니다. 기존 솔루션은 저장 후 닫습니다.")]
+    public static Task<CallToolResult> create_new_solution(
+        [Description("새 솔루션 이름입니다. .sln 확장자는 자동으로 처리됩니다.")] string solutionName,
+        [Description("솔루션 디렉터리 전체 경로입니다. 생략하면 MCP 서버의 현재 디렉터리를 사용합니다.")] string? solutionDirectory = null,
+        [Description("대상 devenv.exe 프로세스 ID. 인스턴스가 하나면 생략할 수 있습니다.")] int? processId = null,
+        CancellationToken cancellationToken = default)
+    {
+        return ExecuteAsync(() => Client.CreateEmptySolutionAsync(processId, solutionName, solutionDirectory, cancellationToken));
+    }
+
     [McpServerTool, Description("VS2010 IDE에서 솔루션 전체 Clean, Build 또는 Rebuild를 실행합니다. 설치된 외부 플러그인은 VS2010이 평소와 동일하게 처리합니다.")]
     public static Task<CallToolResult> build_vs2010_solution(
         [Description("대상 devenv.exe 프로세스 ID. 인스턴스가 하나면 생략할 수 있습니다.")] int? processId = null,

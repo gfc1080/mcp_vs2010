@@ -58,6 +58,14 @@ internal sealed class BridgeRequest
     [JsonPropertyName("saveCurrentSolution")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public bool? SaveCurrentSolution { get; set; }
+
+    [JsonPropertyName("solutionName")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? SolutionName { get; set; }
+
+    [JsonPropertyName("solutionDirectory")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? SolutionDirectory { get; set; }
 }
 
 internal sealed class BridgeResponse

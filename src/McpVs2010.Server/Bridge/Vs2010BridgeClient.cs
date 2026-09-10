@@ -47,6 +47,16 @@ internal sealed class Vs2010BridgeClient
         return CallAsync(processId, new BridgeRequest { Method = "close_solution" }, cancellationToken);
     }
 
+    public Task<string> CreateEmptySolutionAsync(int? processId, string solutionName, string? solutionDirectory, CancellationToken cancellationToken)
+    {
+        return CallAsync(processId, new BridgeRequest
+        {
+            Method = "create_empty_solution",
+            SolutionName = solutionName,
+            SolutionDirectory = solutionDirectory
+        }, cancellationToken);
+    }
+
     public Task<string> RunSolutionOperationAsync(
         int? processId,
         string? operation,

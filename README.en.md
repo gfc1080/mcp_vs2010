@@ -71,6 +71,7 @@ The MCP server currently supports the following operations:
 - `open_vs2010_recent_solution`: open a numbered recent solution.
 - `get_vs2010_state`: return the open solution, configuration, projects, and build state.
 - `close_vs2010_solution`: save all changes in the current solution and close it.
+- `create_new_solution`: create a new empty solution using a name and directory.
 - `build_vs2010_solution`: run solution-wide `clean`, `build`, or `rebuild`.
 - `build_vs2010_project`: run `clean`, `build`, or `rebuild` for one Visual C++ project using **Build > Project Only**.
 - `cancel_vs2010_build`: request cancellation of an active DTE build.
