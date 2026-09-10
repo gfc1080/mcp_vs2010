@@ -57,6 +57,11 @@ internal sealed class Vs2010BridgeClient
         }, cancellationToken);
     }
 
+    public Task<string> RemoveProjectAsync(int? processId, string project, CancellationToken cancellationToken)
+    {
+        return CallAsync(processId, new BridgeRequest { Method = "remove_project", Project = project }, cancellationToken);
+    }
+
     public Task<string> RunSolutionOperationAsync(
         int? processId,
         string? operation,

@@ -202,6 +202,27 @@ namespace McpVs2010.Bridge
             });
         }
 
+        public RemoveProjectResult RemoveProject(BridgeRequest request)
+        {
+            return OnUiThreadAtIdle(delegate
+            {
+                EnsureSolutionOpen();
+                if (string.IsNullOrWhiteSpace(request.Project))
+                    throw new InvalidOperationException("제거할 프로젝트 이름 또는 경로가 필요합니다.");
+                Project project = ResolveProject(request.Project.Trim());
+                string name = project.Name;
+                string path = EmptyToNull(project.FullName);
+                _dte.Solution.Remove(project);
+                return new RemoveProjectResult
+                {
+                    ProjectName = name,
+                    ProjectPath = path,
+                    SolutionPath = EmptyToNull(_dte.Solution.FullName),
+                    FilesDeleted = false
+                };
+            });
+        }
+
         public BuildResult RunBuildOperation(BridgeRequest request)
         {
             string scope = NormalizeScope(request.Scope);

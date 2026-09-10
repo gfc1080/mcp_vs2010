@@ -206,6 +206,9 @@ namespace McpVs2010.Bridge
                 case "create_empty_solution":
                     return BridgeResponse.FromResult(request.Id, _automation.CreateEmptySolution(request));
 
+                case "remove_project":
+                    return BridgeResponse.FromResult(request.Id, _automation.RemoveProject(request));
+
                 case "build_solution":
                     request.Scope = "solution";
                     request.Operation = "build";

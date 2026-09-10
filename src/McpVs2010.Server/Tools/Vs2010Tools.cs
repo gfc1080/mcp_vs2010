@@ -87,6 +87,15 @@ public static class Vs2010Tools
         return ExecuteAsync(() => Client.CreateEmptySolutionAsync(processId, solutionName, solutionDirectory, cancellationToken));
     }
 
+    [McpServerTool, Description("현재 VS2010 솔루션에서 프로젝트를 제거합니다. 프로젝트 파일은 삭제하지 않습니다.")]
+    public static Task<CallToolResult> remove_project(
+        [Description("제거할 프로젝트 이름, uniqueName 또는 프로젝트 파일 전체 경로입니다.")] string project,
+        [Description("대상 devenv.exe 프로세스 ID. 인스턴스가 하나면 생략할 수 있습니다.")] int? processId = null,
+        CancellationToken cancellationToken = default)
+    {
+        return ExecuteAsync(() => Client.RemoveProjectAsync(processId, project, cancellationToken));
+    }
+
     [McpServerTool, Description("VS2010 IDE에서 솔루션 전체 Clean, Build 또는 Rebuild를 실행합니다. 설치된 외부 플러그인은 VS2010이 평소와 동일하게 처리합니다.")]
     public static Task<CallToolResult> build_vs2010_solution(
         [Description("대상 devenv.exe 프로세스 ID. 인스턴스가 하나면 생략할 수 있습니다.")] int? processId = null,

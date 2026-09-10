@@ -25,7 +25,7 @@ Current artifacts:
 
 - The `VERSION` value in `VERSION.DEF` is read and its final number is incremented by one for each build, then used for the server, VSIX, and deployment file names.
 - The version uses the three-part `major.minor.patch` format. For example, starting at `1.1.1`, the first build is `1.1.2`.
-- The current release is `1.1.30` (`McpVs2010.Bridge-1.1.30.vsix` and `McpVs2010-Deployment-1.1.30.zip`).
+- The current release is `1.1.39` (`McpVs2010.Bridge-1.1.39.vsix` and `McpVs2010-Deployment-1.1.39.zip`).
 
 Run `.\scripts\Test-Artifacts.ps1` to validate the VSIX structure, MCP handshake, and tools.
 
@@ -72,6 +72,9 @@ The MCP server currently supports the following operations:
 - `get_vs2010_state`: return the open solution, configuration, projects, and build state.
 - `close_vs2010_solution`: save all changes in the current solution and close it.
 - `create_new_solution`: create a new empty solution using a name and directory.
+- `create_new_project`: create a new project through the Visual C++ wizard.
+- `list_visual_cpp_templates`: list Visual C++ templates and return `templatePath` values.
+- `remove_project`: remove a project from the solution without deleting project files.
 - `build_vs2010_solution`: run solution-wide `clean`, `build`, or `rebuild`.
 - `build_vs2010_project`: run `clean`, `build`, or `rebuild` for one Visual C++ project using **Build > Project Only**.
 - `cancel_vs2010_build`: request cancellation of an active DTE build.

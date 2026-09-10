@@ -310,4 +310,13 @@ namespace McpVs2010.Bridge.Protocol
         [DataMember(Name = "closedSolutionPath", EmitDefaultValue = false)]
         public string ClosedSolutionPath { get; set; }
     }
+
+    [DataContract]
+    internal sealed class RemoveProjectResult
+    {
+        [DataMember(Name = "projectName")] public string ProjectName { get; set; }
+        [DataMember(Name = "projectPath", EmitDefaultValue = false)] public string ProjectPath { get; set; }
+        [DataMember(Name = "solutionPath", EmitDefaultValue = false)] public string SolutionPath { get; set; }
+        [DataMember(Name = "filesDeleted")] public bool FilesDeleted { get; set; }
+    }
 }
