@@ -69,6 +69,14 @@ public static class Vs2010Tools
         return ExecuteAsync(() => Client.GetStateAsync(processId, cancellationToken));
     }
 
+    [McpServerTool, Description("현재 열려 있는 VS2010 솔루션의 모든 변경 내용을 저장한 후 솔루션을 닫습니다." )]
+    public static Task<CallToolResult> close_vs2010_solution(
+        [Description("대상 devenv.exe 프로세스 ID. 인스턴스가 하나면 생략할 수 있습니다.")] int? processId = null,
+        CancellationToken cancellationToken = default)
+    {
+        return ExecuteAsync(() => Client.CloseSolutionAsync(processId, cancellationToken));
+    }
+
     [McpServerTool, Description("VS2010 IDE에서 솔루션 전체 Clean, Build 또는 Rebuild를 실행합니다. 설치된 외부 플러그인은 VS2010이 평소와 동일하게 처리합니다.")]
     public static Task<CallToolResult> build_vs2010_solution(
         [Description("대상 devenv.exe 프로세스 ID. 인스턴스가 하나면 생략할 수 있습니다.")] int? processId = null,

@@ -278,4 +278,14 @@ namespace McpVs2010.Bridge.Protocol
         [DataMember(Name = "wasAlreadyOpen")]
         public bool WasAlreadyOpen { get; set; }
     }
+
+    [DataContract]
+    internal sealed class CloseSolutionResult
+    {
+        [DataMember(Name = "closedSolutionPath", EmitDefaultValue = false)]
+        public string ClosedSolutionPath { get; set; }
+
+        [DataMember(Name = "saved")]
+        public bool Saved { get; set; }
+    }
 }

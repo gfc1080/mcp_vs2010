@@ -64,13 +64,18 @@ Codex connects to the server automatically started by the VSIX. VS2010 and MCP V
 
 ## MCP tools
 
+The MCP server currently supports the following operations:
+
 - `list_vs2010_instances`: list VS2010 instances with the bridge loaded.
 - `list_vs2010_recent_projects`: list recent projects and solution entries.
 - `open_vs2010_recent_solution`: open a numbered recent solution.
 - `get_vs2010_state`: return the open solution, configuration, projects, and build state.
+- `close_vs2010_solution`: save all changes in the current solution and close it.
 - `build_vs2010_solution`: run solution-wide `clean`, `build`, or `rebuild`.
 - `build_vs2010_project`: run `clean`, `build`, or `rebuild` for one Visual C++ project using **Build > Project Only**.
 - `cancel_vs2010_build`: request cancellation of an active DTE build.
+
+Build operations use the external plug-ins and project settings already loaded in VS2010. They return Clean/Build/Rebuild results, VS2010 Error List entries, and Build Output text. Use `processId` to target a specific VS2010 instance; when omitted, a single running instance is selected automatically.
 
 ## Preserved errors and output
 

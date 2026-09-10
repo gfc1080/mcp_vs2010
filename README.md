@@ -145,13 +145,18 @@ Codex는 VSIX가 자동으로 실행한 서버의 URL에 연결합니다. 먼저
 
 ## MCP 도구
 
+현재 MCP 서버가 제공하는 기능은 다음과 같습니다.
+
 - `list_vs2010_instances`: 브리지가 로드된 VS2010 인스턴스 목록
 - `list_vs2010_recent_projects`: VS2010의 최근 프로젝트 및 솔루션 MRU 목록
 - `open_vs2010_recent_solution`: 최근 목록의 지정 순번 솔루션 열기. 다른 솔루션이 열려 있으면 저장 후 닫음
 - `get_vs2010_state`: 열린 솔루션, 구성, 중첩 프로젝트, 빌드 상태
+- `close_vs2010_solution`: 현재 솔루션의 변경 내용을 모두 저장한 후 닫기
 - `build_vs2010_solution`: 솔루션 전체 `clean`, `build`, `rebuild`
 - `build_vs2010_project`: 선택한 Visual C++ 프로젝트만 `clean`, `build`, `rebuild`
 - `cancel_vs2010_build`: 진행 중인 DTE 빌드 취소 요청
+
+빌드 기능은 현재 VS2010에 로드된 외부 플러그인과 프로젝트 설정을 그대로 사용하며, Clean/Build/Rebuild 결과와 VS2010 Error List 및 Build Output을 반환합니다. 모든 인스턴스 대상 도구는 `processId`로 특정 VS2010을 선택할 수 있고, 생략 시 단일 인스턴스를 자동 선택합니다.
 
 VS2010 인스턴스가 하나이면 `processId`를 생략할 수 있습니다. 여러 개라면 목록에서 PID를 선택해야 합니다.
 

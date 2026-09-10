@@ -200,6 +200,9 @@ namespace McpVs2010.Bridge
                 case "open_solution":
                     return BridgeResponse.FromResult(request.Id, _automation.OpenSolution(request));
 
+                case "close_solution":
+                    return BridgeResponse.FromResult(request.Id, _automation.SaveAndCloseSolution());
+
                 case "build_solution":
                     request.Scope = "solution";
                     request.Operation = "build";

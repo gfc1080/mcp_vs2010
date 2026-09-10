@@ -139,6 +139,24 @@ namespace McpVs2010.Bridge
             }
         }
 
+        public CloseSolutionResult SaveAndCloseSolution()
+        {
+            return OnUiThread(delegate
+            {
+                if (_dte.Solution == null || !_dte.Solution.IsOpen)
+                    return new CloseSolutionResult { ClosedSolutionPath = null, Saved = false };
+
+                string currentPath = EmptyToNull(_dte.Solution.FullName);
+                _dte.ExecuteCommand("File.SaveAll", string.Empty);
+                ThrowOnFailure(_solutionService.CloseSolutionElement(
+                    (uint)__VSSLNSAVEOPTIONS.SLNSAVEOPT_SaveIfDirty, null, 0));
+                if (_dte.Solution.IsOpen)
+                    throw new InvalidOperationException("The current solution could not be closed.");
+
+                return new CloseSolutionResult { ClosedSolutionPath = currentPath, Saved = true };
+            });
+        }
+
         public BuildResult RunBuildOperation(BridgeRequest request)
         {
             string scope = NormalizeScope(request.Scope);
