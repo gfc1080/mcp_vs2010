@@ -8,7 +8,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>McpVs2010.Server</AssemblyName>
     <RootNamespace>McpVs2010.Server</RootNamespace>
-    <Version>1.1.119</Version>
+    <Version>1.1.130</Version>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.2.0" />

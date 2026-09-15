@@ -15,6 +15,22 @@ if (!isPrimaryServer)
 }
 
 int httpStreamPort = LoadHttpStreamPort(DefaultHttpStreamPort);
+try
+{
+    McpConfigFileWriter.EnsureClaudeRegistered(httpStreamPort);
+}
+catch (Exception ex)
+{
+    Console.Error.WriteLine(".claude.json registration skipped: " + ex.Message);
+}
+try
+{
+    McpConfigFileWriter.EnsureCodexRegistered(httpStreamPort);
+}
+catch (Exception ex)
+{
+    Console.Error.WriteLine("Codex config registration skipped: " + ex.Message);
+}
 var builder = WebApplication.CreateBuilder(args);
 if (string.IsNullOrWhiteSpace(builder.Configuration["urls"]))
 {

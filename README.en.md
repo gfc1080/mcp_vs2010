@@ -21,11 +21,11 @@ Each build clears the contents of the `artifacts` folder before generating new o
 
 Use `-AllBuildOutputs` with `clean.ps1` to also remove source `bin` and `obj` folders. Use `-WhatIf` to preview deletions.
 
-Current artifacts:
+Current artifacts (1.1.130):
 
 - The `VERSION` value in `VERSION.DEF` is read and its final number is incremented by one for each build, then used for the server, VSIX, and deployment file names.
 - The version uses the three-part `major.minor.patch` format. For example, starting at `1.1.1`, the first build is `1.1.2`.
-- The current release is `1.1.97` (`McpVs2010.Bridge-1.1.97.vsix` and `McpVs2010-Deployment-1.1.97.zip`).
+- The current release is `1.1.130` (`McpVs2010.Bridge-1.1.130.vsix` and `McpVs2010-Deployment-1.1.130.zip`).
 
 Run `.\scripts\Test-Artifacts.ps1` to validate the VSIX structure, MCP handshake, and tools.
 
@@ -73,10 +73,10 @@ The MCP server currently supports the following operations:
 - `get_vs2010_state`: return the open solution, configuration, projects, and build state.
 - `close_vs2010_solution`: save all changes in the current solution and close it.
 - `create_new_solution`: create a new empty solution using a name and directory.
-- `create_new_project`: create a new project through the Visual C++ wizard. If the location is omitted, the project is created under `current location\project name`.
+- `create_new_project`: create a `.vcxproj` manually and add it to the solution. If the location is omitted, the project is created under `current location\project name`.
 - `list_visual_cpp_templates`: list Visual C++ templates and return `templatePath` values.
 - `remove_project`: remove a project from the solution without deleting project files.
-- `vs2010_create_project`: create a project from its name, type, and C/C++ options. If the folder is omitted, `current location\project name` is created automatically; an explicit folder is used as-is. The bridge creates the project from the VS2010 installation's `VC\vcprojects\emptyproj.vsz`, then applies ConfigurationType, subsystem, precompiled-header, MFC/ATL, and export settings through DTE/VCProjectEngine. This avoids bundled Wizard resources and VSZ boolean-symbol dependencies. All whitespace, including internal spaces, is removed from the project-type option before matching, so `Dynamic Library` and `DynamicLibrary` are equivalent. If `option_1` is omitted or is not Application, Console, DLL, or LIB, it defaults to Application. For any of these four non-empty project types, Precompiled Header defaults to Enable/Checked; with `empty_project=true`, MFC, ATL, Precompiled Header, and Export Symbols are all Disable/Unchecked. When MFC/ATL is enabled, LIB uses enum 1 and DLL uses enum 2.
+- `vs2010_create_project`: create a project from its name, type, and C/C++ options. If the folder is omitted, `current location\project name` is created automatically; an explicit folder is used as-is. The bridge manually writes the `.vcxproj` with `Debug|Win32`, `Release|Win32`, `Debug|x64`, and `Release|x64` before adding it with DTE, then applies ConfigurationType, subsystem, precompiled-header, MFC/ATL, and export settings through DTE/VCProjectEngine. This avoids VS Wizard dialog/resource dependencies. All whitespace, including internal spaces, is removed from the project-type option before matching, so `Dynamic Library` and `DynamicLibrary` are equivalent. If `option_1` is omitted or is not Application, Console, DLL, or LIB, it defaults to Application. For any of these four non-empty project types, Precompiled Header defaults to Enable/Checked; with `empty_project=true`, MFC, ATL, Precompiled Header, and Export Symbols are all Disable/Unchecked. When MFC/ATL is enabled, LIB uses enum 1 and DLL uses enum 2.
 - `build_vs2010_solution`: run solution-wide `clean`, `build`, or `rebuild`.
 - `build_vs2010_project`: run `clean`, `build`, or `rebuild` for one Visual C++ project using **Build > Project Only**.
 - `cancel_vs2010_build`: request cancellation of an active DTE build.
@@ -95,3 +95,5 @@ Build results preserve the VS2010 error list, build output panes, project identi
 ## Verification boundary
 
 `build.ps1` verifies server compilation and VSIX packaging. Actual DTE build verification must be performed after installing the VSIX, starting VS2010, and opening the target solution.
+
+See [RELEASE_NOTES_1.1.130.md](RELEASE_NOTES_1.1.130.md) for the changes in release 1.1.130.

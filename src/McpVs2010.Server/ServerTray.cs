@@ -247,6 +247,11 @@ internal static class ServerTray
 
         private void ShowConfig()
         {
+            // A running server can outlive Explorer's notification-area state. Re-register
+            // the icon whenever Config is requested from the VSIX so a missing icon is
+            // recovered without restarting the server.
+            RefreshTrayIcon();
+
             if (_configForm != null && !_configForm.IsDisposed)
             {
                 if (_configForm.WindowState == FormWindowState.Minimized)
@@ -262,6 +267,23 @@ internal static class ServerTray
             {
                 _configForm.Dispose();
                 _configForm = null;
+            }
+        }
+
+        private void RefreshTrayIcon()
+        {
+            try
+            {
+                _icon.Visible = false;
+                _icon.Icon = LoadIcon();
+                _icon.Text = ServerRuntimeState.HttpEnabled
+                    ? "MCP VS2010: Running"
+                    : "MCP VS2010: Stopped";
+                _icon.Visible = true;
+            }
+            catch
+            {
+                // Notification-area refresh is best effort; Config must still open.
             }
         }
 
@@ -337,4 +359,3 @@ internal static class ServerTray
 
 
 }
-

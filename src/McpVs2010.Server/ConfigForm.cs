@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.IO.Pipes;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace McpVs2010.Server;
 
@@ -64,6 +65,51 @@ public sealed partial class ConfigForm : Form
     private void Toggle_Click(object? sender, EventArgs e) => ToggleServer();
     private void Restart_Click(object? sender, EventArgs e) => RestartServer();
 
+    private async void ConfigCodex_Click(object? sender, EventArgs e)
+        => await RunAutoConfigAsync(_btn_config_codex, ConfigureCodex);
+
+    private async void ConfigClaude_Click(object? sender, EventArgs e)
+        => await RunAutoConfigAsync(_btn_config_claude, ConfigureClaude);
+
+    private async Task RunAutoConfigAsync(Button button, Action configure)
+    {
+        // Disable immediately so repeated clicks cannot start concurrent writes.
+        button.Enabled = false;
+        try
+        {
+            configure();
+            RefreshView();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "MCP Config");
+        }
+        finally
+        {
+            await Task.Delay(1000);
+            if (!IsDisposed && !button.IsDisposed)
+                button.Enabled = true;
+        }
+    }
+
+    private void ConfigureCodex()
+    {
+        string profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        string path = Path.Combine(profile, ".codex", "config.toml");
+        if (!File.Exists(path))
+            throw new FileNotFoundException("Codex config.toml was not found:\r\n" + path, path);
+        McpConfigFileWriter.EnsureCodexRegistered(ReadPort());
+    }
+
+    private void ConfigureClaude()
+    {
+        string profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        string path = Path.Combine(profile, ".claude.json");
+        if (!File.Exists(path))
+            throw new FileNotFoundException("Claude .claude.json was not found:\r\n" + path, path);
+        McpConfigFileWriter.EnsureClaudeRegistered(ReadPort());
+    }
+
     protected override void Dispose(bool disposing)
     {
         if (disposing) _refreshTimer.Dispose();
@@ -76,6 +122,12 @@ public sealed partial class ConfigForm : Form
         _status.Text = running ? "Running" : "Stopped";
         _status.ForeColor = running ? Color.DarkGreen : Color.DarkRed;
         _url.Text = $"http://127.0.0.1:{ReadPort()}/stream";
+        bool codexRegistered = McpConfigFileWriter.IsCodexRegistered(ReadPort());
+        _status_codex.Text = codexRegistered ? "registered" : "not registered";
+        _status_codex.ForeColor = codexRegistered ? Color.DarkGreen : Color.Gray;
+        bool claudeRegistered = McpConfigFileWriter.IsClaudeRegistered(ReadPort());
+        _status_claude.Text = claudeRegistered ? "registered" : "not registered";
+        _status_claude.ForeColor = claudeRegistered ? Color.DarkGreen : Color.Gray;
         _toggle.Text = running ? "STOP" : "START";
         _toggle.Enabled = !_restarting;
         _restart.Enabled = !_restarting;

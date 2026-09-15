@@ -204,7 +204,11 @@ namespace McpVs2010.Bridge
                     return BridgeResponse.FromResult(request.Id, _automation.SaveAndCloseSolution());
 
                 case "create_empty_solution":
-                    return BridgeResponse.FromResult(request.Id, _automation.CreateEmptySolution(request));
+                    CreateSolutionResult createdSolution = _automation.CreateEmptySolution(request);
+                    // DTE solution events can fire before SaveAs completes. Refresh the
+                    // discovery record after the explicit save so the MCP server sees it.
+                    WriteDiscovery(createdSolution.SolutionPath);
+                    return BridgeResponse.FromResult(request.Id, createdSolution);
 
                 case "remove_project":
                     return BridgeResponse.FromResult(request.Id, _automation.RemoveProject(request));

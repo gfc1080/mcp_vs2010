@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Runtime.InteropServices;
+using System.Security;
 using System.Threading;
 using System.Windows.Threading;
 using EnvDTE;
@@ -207,13 +208,17 @@ namespace McpVs2010.Bridge
             throw new InvalidOperationException("현재 솔루션을 닫지 못했습니다.");
         }
 
+        string expectedSolutionPath = Path.Combine(directory, name + ".sln");
         _dte.Solution.Create(directory, name);
         if (!_dte.Solution.IsOpen)
           throw new InvalidOperationException("빈 솔루션을 생성하지 못했습니다.");
         AddX64SolutionConfigurations();
-        string solutionPath = EmptyToNull(_dte.Solution.FullName);
-        if (!string.IsNullOrWhiteSpace(solutionPath))
-          _dte.Solution.SaveAs(solutionPath);
+        // Solution.Create can leave FullName empty until the first explicit save.
+        // Always save to the requested path instead of relying on that transient value.
+        _dte.Solution.SaveAs(expectedSolutionPath);
+        string solutionPath = EmptyToNull(_dte.Solution.FullName) ?? expectedSolutionPath;
+        if (!File.Exists(solutionPath))
+          throw new InvalidOperationException("새 솔루션 파일을 저장하지 못했습니다: " + solutionPath);
         return new CreateSolutionResult
         {
           SolutionName = name,
@@ -236,9 +241,10 @@ namespace McpVs2010.Bridge
         bool exists = false;
         for (int index = 1; index <= configurations.Count; index++)
         {
-          SolutionConfiguration2 item = configurations.Item(index) as SolutionConfiguration2;
-          if (item != null && string.Equals(item.Name, name, StringComparison.OrdinalIgnoreCase) &&
-              string.Equals(item.PlatformName, "x64", StringComparison.OrdinalIgnoreCase))
+          SolutionConfiguration item = configurations.Item(index);
+          SolutionConfiguration2 item2 = item as SolutionConfiguration2;
+          if (item2 != null && string.Equals(item2.Name, name, StringComparison.OrdinalIgnoreCase) &&
+              string.Equals(item2.PlatformName, "x64", StringComparison.OrdinalIgnoreCase))
           {
             exists = true;
             break;
@@ -248,7 +254,11 @@ namespace McpVs2010.Bridge
         {
           try
           {
-            configurations.Add(name, "x64", true);
+            // The project's x64 configuration has already been created above.
+            // Passing true asks VS to create project files again and can make the
+            // VS2010 automation call fail silently; false creates the solution
+            // configuration and maps it to the existing project configuration.
+            configurations.Add(name, "x64", false);
           }
           catch (Exception ex)
           {
@@ -405,14 +415,15 @@ namespace McpVs2010.Bridge
         bool precompiledHeader = !emptyProject && request.PrecompiledHeader != false;
         bool supportAtl = !emptyProject && request.Atl == true;
         bool supportMfc = !emptyProject && request.Mfc == true;
-        string emptyTemplatePath = FindVs2010EmptyProjectTemplate();
-
         Project project;
 
         string expectedProjectPath = Path.Combine(location, request.ProjectName + ".vcxproj");
+        CreateManualVcxproj(expectedProjectPath, request.ProjectName);
         try
         {
-          project = _dte.Solution.AddFromTemplate(emptyTemplatePath, location, request.ProjectName, false);
+          // Generate the project file first so all four configurations exist before
+          // DTE adds the project to the solution.
+          project = _dte.Solution.AddFromFile(expectedProjectPath, false);
         }
         catch (Exception ex)
         {
@@ -425,7 +436,7 @@ namespace McpVs2010.Bridge
           {
             NativeDebug.WriteLine("location: " + location + "\r\n");
             NativeDebug.WriteLine("ProjectName: " + request.ProjectName + "\r\n");
-            NativeDebug.WriteLine("emptyTemplatePath: " + emptyTemplatePath + "\r\n");
+            NativeDebug.WriteLine("projectPath: " + expectedProjectPath + "\r\n");
           }
           catch
           {
@@ -455,6 +466,12 @@ namespace McpVs2010.Bridge
           cm.AddPlatform("x64", "Win32", false);
         }
 
+        
+
+          // 프로젝트에 x64 구성을 추가한 뒤 솔루션 구성에도 동일한
+          // Debug|x64, Release|x64 조합을 추가합니다.
+          AddX64SolutionConfigurations();
+
         // emptyproj.vsz로 프로젝트 컨테이너를 만든 뒤, VS2010 Generic
         // Application 템플릿의 Templates.inf를 직접 해석하여 소스 파일을
         // 복사합니다. VS Wizard 반환값/내부 대화상자에 의존하지 않습니다.
@@ -465,6 +482,10 @@ namespace McpVs2010.Bridge
         }
 
         ApplyConfigurationType(project, applicationType, supportAtl, supportMfc, emptyProject, precompiledHeader, exportSymbols, isConsole, isDll, isLib);
+        // ApplyConfigurationType may create/update the project's configurations after
+        // the initial platform pass. Re-run the solution pass now so a project added
+        // to an empty solution also gets Debug|x64 and Release|x64 contexts.
+        AddX64SolutionConfigurations();
         string generatedPath = project == null ? Path.Combine(location, request.ProjectName + ".vcxproj") : project.FullName;
 
         string solutionPathToSave = EmptyToNull(_dte.Solution.FullName);
@@ -665,6 +686,80 @@ namespace McpVs2010.Bridge
       if (!Directory.Exists(path))
         throw new DirectoryNotFoundException("VS2010 Application 템플릿 폴더를 찾을 수 없습니다: " + path);
       return path;
+    }
+
+    private static string XmlEscape(string value)
+    {
+      return SecurityElement.Escape(value) ?? string.Empty;
+    }
+
+    private static void CreateManualVcxproj(string projectPath, string projectName)
+    {
+      string escapedName = XmlEscape(projectName);
+      string projectGuid = Guid.NewGuid().ToString("B").ToUpperInvariant();
+      string[] configurations = { "Debug|Win32", "Release|Win32", "Debug|x64", "Release|x64" };
+      StringBuilder xml = new StringBuilder();
+      xml.AppendLine("<?xml version=\"1.0\" encoding=\"Windows-1252\"?>");
+      xml.AppendLine("<Project DefaultTargets=\"Build\" ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">");
+      xml.AppendLine("  <ItemGroup Label=\"ProjectConfigurations\">");
+      foreach (string configuration in configurations)
+      {
+        string[] parts = configuration.Split('|');
+        xml.AppendLine("    <ProjectConfiguration Include=\"" + configuration + "\">");
+        xml.AppendLine("      <Configuration>" + parts[0] + "</Configuration>");
+        xml.AppendLine("      <Platform>" + parts[1] + "</Platform>");
+        xml.AppendLine("    </ProjectConfiguration>");
+      }
+      xml.AppendLine("  </ItemGroup>");
+      xml.AppendLine("  <PropertyGroup Label=\"Globals\">");
+      xml.AppendLine("    <ProjectGuid>" + projectGuid + "</ProjectGuid>");
+      xml.AppendLine("    <Keyword>Win32Proj</Keyword>");
+      xml.AppendLine("    <RootNamespace>" + escapedName + "</RootNamespace>");
+      xml.AppendLine("  </PropertyGroup>");
+      xml.AppendLine("  <Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.Default.props\" />");
+      foreach (string configuration in configurations)
+      {
+        string[] parts = configuration.Split('|');
+        string condition = "'$(Configuration)|$(Platform)'=='" + configuration + "'";
+        xml.AppendLine("  <PropertyGroup Condition=\"" + condition + "\" Label=\"Configuration\">");
+        xml.AppendLine("    <ConfigurationType>1</ConfigurationType>");
+        xml.AppendLine("    <UseDebugLibraries>" + (parts[0] == "Debug" ? "true" : "false") + "</UseDebugLibraries>");
+        xml.AppendLine("    <PlatformToolset>v100</PlatformToolset>");
+        xml.AppendLine("    <CharacterSet>1</CharacterSet>");
+        xml.AppendLine("  </PropertyGroup>");
+      }
+      xml.AppendLine("  <Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.props\" />");
+      xml.AppendLine("  <ImportGroup Label=\"ExtensionSettings\" />");
+      foreach (string configuration in configurations)
+      {
+        string condition = "'$(Configuration)|$(Platform)'=='" + configuration + "'";
+        xml.AppendLine("  <ImportGroup Label=\"PropertySheets\" Condition=\"" + condition + "\">");
+        xml.AppendLine("    <Import Project=\"$(UserRootDir)\\Microsoft.Cpp.$(Platform).user.props\" Condition=\"exists('$(UserRootDir)\\Microsoft.Cpp.$(Platform).user.props')\" Label=\"LocalAppDataPlatform\" />");
+        xml.AppendLine("  </ImportGroup>");
+      }
+      xml.AppendLine("  <PropertyGroup Label=\"UserMacros\" />");
+      foreach (string configuration in configurations)
+      {
+        string[] parts = configuration.Split('|');
+        string condition = "'$(Configuration)|$(Platform)'=='" + configuration + "'";
+        xml.AppendLine("  <ItemDefinitionGroup Condition=\"" + condition + "\">");
+        xml.AppendLine("    <ClCompile>");
+        xml.AppendLine("      <WarningLevel>Level3</WarningLevel>");
+        xml.AppendLine("      <Optimization>" + (parts[0] == "Debug" ? "Disabled" : "MaxSpeed") + "</Optimization>");
+        xml.AppendLine("      <PrecompiledHeader>NotUsing</PrecompiledHeader>");
+        xml.AppendLine("      <PreprocessorDefinitions>WIN32;" + (parts[0] == "Debug" ? "_DEBUG" : "NDEBUG") + ";%(PreprocessorDefinitions)</PreprocessorDefinitions>");
+        xml.AppendLine("    </ClCompile>");
+        xml.AppendLine("    <Link>");
+        xml.AppendLine("      <SubSystem>Windows</SubSystem>");
+        xml.AppendLine("      <GenerateDebugInformation>true</GenerateDebugInformation>");
+        xml.AppendLine("    </Link>");
+        xml.AppendLine("  </ItemDefinitionGroup>");
+      }
+      xml.AppendLine("  <Import Project=\"$(VCTargetsPath)\\Microsoft.Cpp.targets\" />");
+      xml.AppendLine("  <ImportGroup Label=\"ExtensionTargets\" />");
+      xml.AppendLine("</Project>");
+      Directory.CreateDirectory(Path.GetDirectoryName(projectPath));
+      File.WriteAllText(projectPath, xml.ToString(), new UTF8Encoding(false));
     }
 
     private string FindVs2010EmptyProjectTemplate()
