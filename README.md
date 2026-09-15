@@ -60,7 +60,7 @@ PowerShell에서 다음을 실행합니다.
 
 ### 다른 사용자에게 배포
 
-소스 저장소가 없는 PC에는 `artifacts\McpVs2010-Deployment-1.1.39.zip` 또는 `McpVs2010-Deployment-Latest.zip`을 전달합니다. ZIP을 압축 해제한 뒤 `Install-McpVs2010-Bridge.cmd`를 실행하면 VSIX와 사용자용 MCP 서버 파일이 설치됩니다. 배포 폴더의 `README-Deployment.txt`에 사전 조건, 자동 실행 동작과 포트 변경 방법이 정리되어 있습니다.
+소스 저장소가 없는 PC에는 `artifacts\McpVs2010-Deployment-1.1.97.zip` 또는 `McpVs2010-Deployment-Latest.zip`을 전달합니다. ZIP을 압축 해제한 뒤 `Install-McpVs2010-Bridge.cmd`를 실행하면 VSIX와 사용자용 MCP 서버 파일이 설치됩니다. C/C++ 프로젝트는 VS2010 설치 폴더의 `VC\vcprojects\emptyproj.vsz`로 빈 프로젝트를 만든 뒤 DTE 설정을 적용합니다. 배포 폴더의 `README-Deployment.txt`에 사전 조건, 자동 실행 동작과 포트 변경 방법이 정리되어 있습니다.
 
 배포 설치에는 Visual Studio 2010의 VSIX 지원과 .NET 10 런타임이 필요합니다. Qt 등 프로젝트별 외부 플러그인은 배포 패키지가 설치하거나 검사하지 않으며, 사용자가 해당 PC에서 별도로 관리합니다. 자체 소스 코드는 `LICENSE`, 외부 의존성 라이선스는 `THIRD-PARTY-NOTICES.txt`를 참고하십시오.
 
@@ -78,7 +78,7 @@ VS2010 설치기를 직접 지정해 일반 설치 창을 열 수도 있습니�
 
 ```powershell
 & 'C:\Program Files (x86)\Microsoft Visual Studio 10.0\Common7\IDE\VSIXInstaller.exe' `
-  'D:\WORK\ai_work\codex\mcp_vs2010\artifacts\McpVs2010.Bridge-1.1.39.vsix'
+  'D:\WORK\ai_work\codex\mcp_vs2010\artifacts\McpVs2010.Bridge-1.1.97.vsix'
 ```
 
 설치 후 VS2010을 다시 시작합니다. 브리지가 로드되면 다음 위치에 인스턴스 검색 파일이 생성됩니다.
@@ -150,19 +150,26 @@ Codex는 VSIX가 자동으로 실행한 서버의 URL에 연결합니다. 먼저
 - `list_vs2010_instances`: 브리지가 로드된 VS2010 인스턴스 목록
 - `list_vs2010_recent_projects`: VS2010의 최근 프로젝트 및 솔루션 MRU 목록
 - `open_vs2010_recent_solution`: 최근 목록의 지정 순번 솔루션 열기. 다른 솔루션이 열려 있으면 저장 후 닫음
+- `open_vs2010_solution`: Recent 목록을 사용하지 않고 지정한 `.sln` 전체 경로의 솔루션 열기
 - `get_vs2010_state`: 열린 솔루션, 구성, 중첩 프로젝트, 빌드 상태
 - `close_vs2010_solution`: 현재 솔루션의 변경 내용을 모두 저장한 후 닫기
 - `create_new_solution`: 이름과 디렉터리로 새 빈 솔루션 생성
-- `create_new_project`: Visual C++ Wizard로 새 프로젝트 생성
+- `create_new_project`: Visual C++ Wizard로 새 프로젝트 생성 (위치를 생략하면 현재 위치\프로젝트이름 폴더에 생성)
 - `list_visual_cpp_templates`: Visual C++ 템플릿 목록과 `templatePath` 반환
 - `remove_project`: 프로젝트 파일을 삭제하지 않고 솔루션에서만 제거
+- `vs2010_create_project`: 프로젝트 이름·유형 및 C/C++ 옵션으로 새 프로젝트 생성. 폴더를 생략하면 현재 위치\프로젝트이름 폴더를 자동 생성하며, 폴더를 지정하면 해당 위치를 사용합니다. 프로젝트 종류 입력은 앞뒤와 내부의 모든 공백을 제거한 뒤 비교합니다. VSZ boolean 심볼은 문자열이 아닌 true/false로 정규화하여 처리합니다. `option_1`이 Application/Console/DLL/LIB 중 어느 것도 아니거나 생략되면 Application으로 처리합니다. 네 가지 유형이 지정된 일반 프로젝트는 Precompiled Header가 기본 Enable/Checked이며, `empty_project=true`이면 MFC/ATL/Precompiled Header/Export Symbols를 모두 Disable/Unchecked로 처리합니다. MFC/ATL 사용 시 LIB는 enum 1, DLL은 enum 2를 사용합니다.
 - `build_vs2010_solution`: 솔루션 전체 `clean`, `build`, `rebuild`
 - `build_vs2010_project`: 선택한 Visual C++ 프로젝트만 `clean`, `build`, `rebuild`
 - `cancel_vs2010_build`: 진행 중인 DTE 빌드 취소 요청
+- `list_accessible_paths`: MCP 서버에 설정된 Working folder만 접근 가능 경로로 반환
+- `list_solutions_in_path`: Working folder 내부의 `.sln` 파일 목록
+- `list_vcxprojects_in_path`: Working folder 내부의 `.vcxproj` 파일 목록
 
 빌드 기능은 현재 VS2010에 로드된 외부 플러그인과 프로젝트 설정을 그대로 사용하며, Clean/Build/Rebuild 결과와 VS2010 Error List 및 Build Output을 반환합니다. 모든 인스턴스 대상 도구는 `processId`로 특정 VS2010을 선택할 수 있고, 생략 시 단일 인스턴스를 자동 선택합니다.
 
 VS2010 인스턴스가 하나이면 `processId`를 생략할 수 있습니다. 여러 개라면 목록에서 PID를 선택해야 합니다.
+
+파일 검색 도구의 기본 경로는 MCP Config의 `Working folder`입니다. Working folder 외부의 경로는 검색하거나 MCP 결과로 노출할 수 없습니다. 기본 Working folder는 사용자 Documents 폴더이며, 유효한 경로를 지정할 수 없으면 오류를 반환합니다.
 
 `build_vs2010_project`의 `project`에는 `get_vs2010_state`가 반환한 프로젝트 `name`, `uniqueName` 또는 프로젝트 파일 전체 경로를 지정합니다. 같은 이름이 둘 이상이면 `uniqueName`이나 전체 경로가 필요합니다. 이 도구는 VS2010의 **Build > Project Only** 명령을 실행하므로 Visual C++ 프로젝트만 지원하고 프로젝트 의존성이나 솔루션 파일을 함께 처리하지 않습니다.
 

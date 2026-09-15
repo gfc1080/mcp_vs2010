@@ -62,6 +62,11 @@ internal sealed class Vs2010BridgeClient
         return CallAsync(processId, new BridgeRequest { Method = "remove_project", Project = project }, cancellationToken);
     }
 
+    public Task<string> CreateNewProjectAsync(int? processId, string template, string projectName, string location, string? applicationType, bool emptyProject, bool exportSymbols, bool precompiledHeader, bool atl, bool mfc, CancellationToken cancellationToken)
+    {
+        return CallAsync(processId, new BridgeRequest { Method = "create_new_project", Template = template, ProjectName = projectName, Location = location, ApplicationType = applicationType, EmptyProject = emptyProject, ExportSymbols = exportSymbols, PrecompiledHeader = precompiledHeader, Atl = atl, Mfc = mfc }, cancellationToken);
+    }
+
     public Task<string> RunSolutionOperationAsync(
         int? processId,
         string? operation,

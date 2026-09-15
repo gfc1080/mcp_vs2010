@@ -6,6 +6,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "McpVs2010.Server", "src\Mcp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "McpVs2010.Bridge", "src\McpVs2010.Bridge\McpVs2010.Bridge.csproj", "{2CF4B245-E531-4FA7-B40F-02E2E40D296E}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{378E7024-A3DD-4F47-8D46-E7E0CB8C44DE}"
+	ProjectSection(SolutionItems) = preProject
+		.clang-format = .clang-format
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -20,5 +25,11 @@ Global
 		{2CF4B245-E531-4FA7-B40F-02E2E40D296E}.Debug|Any CPU.Build.0 = Debug|x86
 		{2CF4B245-E531-4FA7-B40F-02E2E40D296E}.Release|Any CPU.ActiveCfg = Release|x86
 		{2CF4B245-E531-4FA7-B40F-02E2E40D296E}.Release|Any CPU.Build.0 = Release|x86
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1CA21BB9-6E3E-4B88-924C-AA0452A39F01}
 	EndGlobalSection
 EndGlobal

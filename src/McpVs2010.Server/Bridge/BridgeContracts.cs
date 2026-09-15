@@ -66,6 +66,16 @@ internal sealed class BridgeRequest
     [JsonPropertyName("solutionDirectory")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? SolutionDirectory { get; set; }
+
+    [JsonPropertyName("template")] public string? Template { get; set; }
+    [JsonPropertyName("projectName")] public string? ProjectName { get; set; }
+    [JsonPropertyName("location")] public string? Location { get; set; }
+    [JsonPropertyName("applicationType")] public string? ApplicationType { get; set; }
+    [JsonPropertyName("emptyProject")] public bool? EmptyProject { get; set; }
+    [JsonPropertyName("exportSymbols")] public bool? ExportSymbols { get; set; }
+    [JsonPropertyName("precompiledHeader")] public bool? PrecompiledHeader { get; set; }
+    [JsonPropertyName("atl")] public bool? Atl { get; set; }
+    [JsonPropertyName("mfc")] public bool? Mfc { get; set; }
 }
 
 internal sealed class BridgeResponse

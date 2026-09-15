@@ -25,7 +25,7 @@ Current artifacts:
 
 - The `VERSION` value in `VERSION.DEF` is read and its final number is incremented by one for each build, then used for the server, VSIX, and deployment file names.
 - The version uses the three-part `major.minor.patch` format. For example, starting at `1.1.1`, the first build is `1.1.2`.
-- The current release is `1.1.39` (`McpVs2010.Bridge-1.1.39.vsix` and `McpVs2010-Deployment-1.1.39.zip`).
+- The current release is `1.1.97` (`McpVs2010.Bridge-1.1.97.vsix` and `McpVs2010-Deployment-1.1.97.zip`).
 
 Run `.\scripts\Test-Artifacts.ps1` to validate the VSIX structure, MCP handshake, and tools.
 
@@ -69,17 +69,24 @@ The MCP server currently supports the following operations:
 - `list_vs2010_instances`: list VS2010 instances with the bridge loaded.
 - `list_vs2010_recent_projects`: list recent projects and solution entries.
 - `open_vs2010_recent_solution`: open a numbered recent solution.
+- `open_vs2010_solution`: open a solution from an explicit `.sln` path without using the Recent list.
 - `get_vs2010_state`: return the open solution, configuration, projects, and build state.
 - `close_vs2010_solution`: save all changes in the current solution and close it.
 - `create_new_solution`: create a new empty solution using a name and directory.
-- `create_new_project`: create a new project through the Visual C++ wizard.
+- `create_new_project`: create a new project through the Visual C++ wizard. If the location is omitted, the project is created under `current location\project name`.
 - `list_visual_cpp_templates`: list Visual C++ templates and return `templatePath` values.
 - `remove_project`: remove a project from the solution without deleting project files.
+- `vs2010_create_project`: create a project from its name, type, and C/C++ options. If the folder is omitted, `current location\project name` is created automatically; an explicit folder is used as-is. The bridge creates the project from the VS2010 installation's `VC\vcprojects\emptyproj.vsz`, then applies ConfigurationType, subsystem, precompiled-header, MFC/ATL, and export settings through DTE/VCProjectEngine. This avoids bundled Wizard resources and VSZ boolean-symbol dependencies. All whitespace, including internal spaces, is removed from the project-type option before matching, so `Dynamic Library` and `DynamicLibrary` are equivalent. If `option_1` is omitted or is not Application, Console, DLL, or LIB, it defaults to Application. For any of these four non-empty project types, Precompiled Header defaults to Enable/Checked; with `empty_project=true`, MFC, ATL, Precompiled Header, and Export Symbols are all Disable/Unchecked. When MFC/ATL is enabled, LIB uses enum 1 and DLL uses enum 2.
 - `build_vs2010_solution`: run solution-wide `clean`, `build`, or `rebuild`.
 - `build_vs2010_project`: run `clean`, `build`, or `rebuild` for one Visual C++ project using **Build > Project Only**.
 - `cancel_vs2010_build`: request cancellation of an active DTE build.
+- `list_accessible_paths`: return only the MCP Config Working folder as an accessible path.
+- `list_solutions_in_path`: list `.sln` files inside the Working folder.
+- `list_vcxprojects_in_path`: list `.vcxproj` files inside the Working folder.
 
 Build operations use the external plug-ins and project settings already loaded in VS2010. They return Clean/Build/Rebuild results, VS2010 Error List entries, and Build Output text. Use `processId` to target a specific VS2010 instance; when omitted, a single running instance is selected automatically.
+
+File search tools use the `Working folder` configured in MCP Config. Paths outside the Working folder cannot be searched or exposed in MCP results. The default Working folder is the current user's Documents folder; an error is returned if no valid accessible folder can be selected.
 
 ## Preserved errors and output
 

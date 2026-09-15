@@ -38,6 +38,32 @@ public static class Vs2010Tools
         }
     }
 
+    [McpServerTool, Description("지정한 전체 경로의 솔루션 파일을 VS2010에서 엽니다. VS2010 Recent 목록은 사용하지 않습니다.")]
+    [SupportedOSPlatform("windows")]
+    public static Task<CallToolResult> open_vs2010_solution(
+        [Description("열 솔루션 파일(.sln)의 전체 경로입니다.")] string solution_path,
+        [Description("대상 devenv.exe 프로세스 ID. 인스턴스가 하나면 생략할 수 있습니다.")] int? processId = null,
+        [Description("현재 열린 솔루션을 닫기 전에 저장할지 여부입니다. 기본값은 true입니다.")] bool saveCurrentSolution = true,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(solution_path))
+                throw new ArgumentException("solution_path가 필요합니다.", nameof(solution_path));
+            string fullPath = Path.GetFullPath(solution_path.Trim());
+            if (!fullPath.EndsWith(".sln", StringComparison.OrdinalIgnoreCase))
+                throw new ArgumentException(".sln 솔루션 파일만 열 수 있습니다.", nameof(solution_path));
+            if (!File.Exists(fullPath))
+                throw new FileNotFoundException("솔루션 파일을 찾을 수 없습니다.", fullPath);
+            return ExecuteAsync(() => Client.OpenSolutionAsync(
+                processId, fullPath, saveCurrentSolution, cancellationToken));
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(Error(ex));
+        }
+    }
+
     [McpServerTool, Description("VS2010의 최근 목록에서 지정한 순번의 솔루션을 엽니다. 현재 솔루션이 다르면 저장 후 닫습니다.")]
     [SupportedOSPlatform("windows")]
     public static Task<CallToolResult> open_vs2010_recent_solution(
@@ -94,6 +120,79 @@ public static class Vs2010Tools
         CancellationToken cancellationToken = default)
     {
         return ExecuteAsync(() => Client.RemoveProjectAsync(processId, project, cancellationToken));
+    }
+
+    [McpServerTool, Description("Visual C++ 템플릿으로 새 프로젝트를 생성합니다.")]
+    public static Task<CallToolResult> create_new_project(
+        [Description("Visual C++ 템플릿(.vsz) 전체 경로입니다.")] string template,
+        [Description("프로젝트 이름입니다.")] string projectName,
+        [Description("프로젝트 생성 폴더 전체 경로입니다. 생략하면 현재 위치 아래에 프로젝트 이름 폴더를 자동으로 만듭니다.")] string? location = null,
+        [Description("대상 devenv.exe 프로세스 ID입니다.")] int? processId = null,
+        CancellationToken cancellationToken = default)
+    {
+        return ExecuteAsync(() => Client.CreateNewProjectAsync(processId, template, projectName, location ?? string.Empty, null, false, false, false, false, false, cancellationToken));
+    }
+
+    [McpServerTool, Description("VS2010 프로젝트 생성 표준 API입니다. 현재 c/c++ 유형을 지원합니다.")]
+    public static Task<CallToolResult> vs2010_create_project(
+        [Description("프로젝트 이름입니다.")] string project_name,
+        [Description("프로젝트 폴더 전체 경로입니다. 지정하면 해당 위치를 사용합니다. 생략하면 현재 위치 아래에 프로젝트 이름 폴더를 자동으로 만듭니다.")] string? project_folder_path = null,
+        [Description("프로젝트 유형입니다. 현재 c/c++를 지원하며 향후 c# 등을 추가할 수 있습니다.")] string project_type = "c/c++",
+        [Description("c/c++ option_1: Window Application, Console Application, Dynamic Library, Static Library 중 하나입니다. 생략하고 빈 프로젝트를 선택하면 Window Application Empty Project로 생성됩니다.")] string option_1 = "Window Application",
+        [Description("option_2 Empty project 여부입니다. true이면 다른 option_2/3은 비활성화됩니다.")] bool empty_project = false,
+        [Description("option_2 Export symbols 여부입니다.")] bool export_symbols = false,
+        [Description("option_2 Precompiled Header 여부입니다.")] bool precompiled_header = false,
+        [Description("option_3 ATL header 여부입니다.")] bool atl = false,
+        [Description("option_3 MFC header 여부입니다.")] bool mfc = false,
+        [Description("대상 devenv.exe 프로세스 ID입니다.")] int? processId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!string.Equals(project_type, "c/c++", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(project_type, "c++", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(project_type, "cpp", StringComparison.OrdinalIgnoreCase))
+            return Task.FromResult(Result("ERROR\r\n지원하지 않는 project_type입니다: " + project_type, true));
+        string normalizedOption = RemoveWhitespace(option_1);
+        // "Console Application"에는 application이라는 단어도 포함되므로
+        // Windows/Application 판정보다 Console 판정을 먼저 해야 합니다.
+        string applicationType;
+        if (normalizedOption.IndexOf("console", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            normalizedOption.IndexOf("콘솔", StringComparison.OrdinalIgnoreCase) >= 0)
+            applicationType = "Console";
+        else if (normalizedOption == "dynamiclibrary" || normalizedOption == "dll" || normalizedOption == "dynamic")
+            applicationType = "DynamicLibrary";
+        else if (normalizedOption == "staticlibrary" || normalizedOption == "lib" || normalizedOption == "static")
+            applicationType = "StaticLibrary";
+        else if (normalizedOption == "window" || normalizedOption == "windows" ||
+                 normalizedOption == "windowapplication" || normalizedOption == "windowsapplication" ||
+                 normalizedOption == "application" || normalizedOption == "윈도우어플리케이션" ||
+                 normalizedOption == "어플리케이션")
+            applicationType = "Windows";
+        else
+            applicationType = "Windows";
+        if (empty_project) { export_symbols = false; precompiled_header = false; atl = false; mfc = false; }
+        else if (!precompiled_header) precompiled_header = true;
+        return ExecuteAsync(() => Client.CreateNewProjectAsync(
+            processId,
+            "C:\\Program Files (x86)\\Microsoft Visual Studio 10.0\\VC\\vcprojects\\Win32Wiz.vsz",
+            project_name,
+            project_folder_path ?? string.Empty,
+            applicationType,
+            empty_project,
+            export_symbols,
+            precompiled_header,
+            atl,
+            mfc,
+            cancellationToken));
+    }
+
+    private static string RemoveWhitespace(string value)
+    {
+        if (string.IsNullOrEmpty(value)) return string.Empty;
+        var buffer = new char[value.Length];
+        int count = 0;
+        for (int index = 0; index < value.Length; index++)
+            if (!char.IsWhiteSpace(value[index])) buffer[count++] = value[index];
+        return new string(buffer, 0, count);
     }
 
     [McpServerTool, Description("VS2010 IDE에서 솔루션 전체 Clean, Build 또는 Rebuild를 실행합니다. 설치된 외부 플러그인은 VS2010이 평소와 동일하게 처리합니다.")]

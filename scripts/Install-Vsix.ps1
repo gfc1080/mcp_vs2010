@@ -417,7 +417,7 @@ Stop-ResidentMcpServer
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $archive = [System.IO.Compression.ZipFile]::OpenRead($resolvedVsixPath)
 try {
-    foreach ($entry in $archive.Entries | Where-Object { $_.FullName -like 'server/*' -and -not $_.FullName.EndsWith('/') }) {
+    foreach ($entry in $archive.Entries | Where-Object { $_.FullName -match '^server[\\/]' -and -not $_.FullName.EndsWith('/') -and -not $_.FullName.EndsWith('\\') }) {
         $relative = $entry.FullName.Replace('/', [System.IO.Path]::DirectorySeparatorChar)
         if ($relative.EndsWith('.payload.pdb', [System.StringComparison]::OrdinalIgnoreCase)) {
             $relative = $relative.Substring(0, $relative.Length - '.payload.pdb'.Length)
@@ -441,12 +441,14 @@ $localServerDirectory = Join-Path $env:LOCALAPPDATA 'McpVs2010'
 New-Item -ItemType Directory -Path $localServerDirectory -Force | Out-Null
 $archive = [System.IO.Compression.ZipFile]::OpenRead($resolvedVsixPath)
 try {
-    foreach ($entry in $archive.Entries | Where-Object { $_.FullName -like 'server/*' -and -not $_.FullName.EndsWith('/') }) {
-        $fileName = [System.IO.Path]::GetFileName($entry.FullName)
-        if ($fileName.EndsWith('.payload.pdb', [System.StringComparison]::OrdinalIgnoreCase)) {
-            $fileName = $fileName.Substring(0, $fileName.Length - '.payload.pdb'.Length)
+    foreach ($entry in $archive.Entries | Where-Object { $_.FullName -match '^server[\\/]' -and -not $_.FullName.EndsWith('/') -and -not $_.FullName.EndsWith('\\') }) {
+        $relative = $entry.FullName.Substring('server/'.Length).Replace('/', [System.IO.Path]::DirectorySeparatorChar).Replace('\\', [System.IO.Path]::DirectorySeparatorChar)
+        if ($relative.EndsWith('.payload.pdb', [System.StringComparison]::OrdinalIgnoreCase)) {
+            $relative = $relative.Substring(0, $relative.Length - '.payload.pdb'.Length)
         }
-        $destination = Join-Path $localServerDirectory $fileName
+        $destination = Join-Path $localServerDirectory $relative
+        $destinationDirectory = Split-Path $destination -Parent
+        New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
         $input = $entry.Open()
         try {
             $output = [System.IO.File]::Open($destination, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write, [System.IO.FileShare]::Read)

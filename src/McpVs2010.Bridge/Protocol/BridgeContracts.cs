@@ -38,6 +38,16 @@ namespace McpVs2010.Bridge.Protocol
 
         [DataMember(Name = "solutionDirectory", EmitDefaultValue = false)]
         public string SolutionDirectory { get; set; }
+
+        [DataMember(Name = "template", EmitDefaultValue = false)] public string Template { get; set; }
+        [DataMember(Name = "projectName", EmitDefaultValue = false)] public string ProjectName { get; set; }
+        [DataMember(Name = "location", EmitDefaultValue = false)] public string Location { get; set; }
+        [DataMember(Name = "applicationType", EmitDefaultValue = false)] public string ApplicationType { get; set; }
+        [DataMember(Name = "emptyProject", EmitDefaultValue = false)] public bool? EmptyProject { get; set; }
+        [DataMember(Name = "exportSymbols", EmitDefaultValue = false)] public bool? ExportSymbols { get; set; }
+        [DataMember(Name = "precompiledHeader", EmitDefaultValue = false)] public bool? PrecompiledHeader { get; set; }
+        [DataMember(Name = "atl", EmitDefaultValue = false)] public bool? Atl { get; set; }
+        [DataMember(Name = "mfc", EmitDefaultValue = false)] public bool? Mfc { get; set; }
     }
 
     [DataContract]
@@ -318,5 +328,13 @@ namespace McpVs2010.Bridge.Protocol
         [DataMember(Name = "projectPath", EmitDefaultValue = false)] public string ProjectPath { get; set; }
         [DataMember(Name = "solutionPath", EmitDefaultValue = false)] public string SolutionPath { get; set; }
         [DataMember(Name = "filesDeleted")] public bool FilesDeleted { get; set; }
+    }
+
+    [DataContract]
+    internal sealed class CreateProjectResult
+    {
+        [DataMember(Name = "projectName")] public string ProjectName { get; set; }
+        [DataMember(Name = "projectPath", EmitDefaultValue = false)] public string ProjectPath { get; set; }
+        [DataMember(Name = "solutionPath", EmitDefaultValue = false)] public string SolutionPath { get; set; }
     }
 }

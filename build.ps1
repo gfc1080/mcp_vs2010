@@ -196,7 +196,6 @@ else {
     Copy-Item -LiteralPath $vsixManifestPath -Destination $vsixStage
     Copy-Item -LiteralPath (Join-Path $projectRoot 'src\McpVs2010.Bridge\Vsix\McpVs2010.Bridge.pkgdef') -Destination $vsixStage
     Copy-Item -LiteralPath (Join-Path $projectRoot 'src\McpVs2010.Bridge\Vsix\[Content_Types].xml') -Destination $vsixStage
-
     $vsixServerStage = Join-Path $vsixStage 'server'
     New-Item -ItemType Directory -Path $vsixServerStage -Force | Out-Null
     if (-not (Test-Path -LiteralPath $serverOutput)) {
